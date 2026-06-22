@@ -11,9 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.inventory.system"
@@ -24,20 +22,10 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "com.inventory.system",
-      "permissions": [
-        "CAMERA",
-        "INTERNET",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      "permissions": ["CAMERA", "INTERNET"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "3949ca9f-8bf2-4644-8568-b73724b25e98"
-      }
     }
   }
 }
