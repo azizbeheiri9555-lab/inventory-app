@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🏪 نظام إدارة المخزون المتكامل</title>
-    <script src="html5-qrcode.min.js"></script>
-    <script src="chart.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-primary: #1a1a2e;
@@ -86,25 +86,6 @@
         }
         .header-actions button:hover { transform: scale(1.05); background: var(--accent); }
         .header-actions button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-        .warnings-badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            background: var(--accent);
-            color: #fff;
-            border-radius: 50%;
-            font-size: 8px;
-            padding: 1px 4px;
-            display: none;
-        }
-        .backup-badge {
-            font-size: 9px;
-            color: var(--text-secondary);
-            display: none;
-            background: var(--bg-card);
-            padding: 2px 8px;
-            border-radius: 12px;
-        }
         .user-badge {
             background: var(--accent);
             padding: 4px 12px;
@@ -749,18 +730,24 @@
 </head>
 <body>
 
-    <!-- ===== شاشة تسجيل الدخول ===== -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="login-screen" class="container active">
         <div class="login-container">
             <h1>🏪 نظام إدارة المخزون</h1>
-            <h2>🔐 تسجيل الدخول</h2>
-            <div class="form-group">
-                <input type="text" id="login-username" placeholder="👤 اسم المستخدم" value="admin">
+            <h2 id="login-title">🔐 تسجيل الدخول</h2>
+            <div id="first-user-setup" class="hidden">
+                <p style="color: var(--warning); font-size: 12px; margin-bottom: 10px;">⚡ أول تشغيل: يرجى إنشاء حساب المدير</p>
             </div>
             <div class="form-group">
-                <input type="password" id="login-password" placeholder="🔑 كلمة المرور" value="admin770970801">
+                <input type="text" id="login-username" placeholder="👤 اسم المستخدم" value="">
             </div>
-            <button class="action-btn" onclick="doLogin()">🚪 دخول</button>
+            <div class="form-group">
+                <input type="password" id="login-password" placeholder="🔑 كلمة المرور" value="">
+            </div>
+            <div class="form-group hidden" id="confirm-password-group">
+                <input type="password" id="login-password-confirm" placeholder="🔑 تأكيد كلمة المرور">
+            </div>
+            <button class="action-btn" id="login-btn" onclick="handleLogin()">🚪 دخول</button>
             <div id="login-error" class="error-msg"></div>
             <div style="margin-top:8px;font-size:9px;color:var(--text-secondary);">
                 
@@ -768,9 +755,8 @@
         </div>
     </div>
 
-    <!-- ===== التطبيق الرئيسي ===== -->
+    <!-- التطبيق الرئيسي -->
     <div id="app-content" class="container hidden">
-        <!-- ===== HEADER ===== -->
         <div class="header">
             <h1>🏪 المخزون</h1>
             <div class="header-actions">
@@ -778,11 +764,10 @@
                 <button onclick="toggleTheme()" title="المظهر">🌙</button>
                 <button onclick="backupData()" title="نسخ احتياطي" id="backup-btn">💾</button>
                 <button onclick="restoreData()" title="استعادة نسخة" id="restore-btn">📂</button>
-                <span id="backup-badge" class="backup-badge"></span>
                 <button onclick="showSuppliers()" title="الموردين">🏢</button>
                 <button onclick="openWarningsModal()" title="التحذيرات" style="position:relative;">
                     ⚠️
-                    <span id="warnings-badge" class="warnings-badge">0</span>
+                    <span id="warnings-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;border-radius:50%;font-size:8px;padding:1px 4px;">0</span>
                 </button>
                 <span class="user-badge" id="user-badge" onclick="showUserModal()">
                     👤 <span id="current-username">مدير</span>
@@ -792,7 +777,7 @@
             </div>
         </div>
 
-        <!-- ===== لوحة التحكم ===== -->
+        <!-- لوحة التحكم -->
         <div class="dashboard">
             <div class="stat-card" onclick="filterDashboard('all')" id="dash-all">
                 <div class="number" id="stat-products">0</div>
@@ -816,7 +801,7 @@
             </div>
         </div>
 
-        <!-- ===== حاوية الكاميرا ===== -->
+        <!-- حاوية الكاميرا -->
         <div id="scanner-container">
             <div id="reader"></div>
             <div id="loading-overlay" class="loading-overlay">
@@ -825,7 +810,7 @@
             </div>
         </div>
 
-        <!-- ===== القائمة ===== -->
+        <!-- القائمة -->
         <div class="menu">
             <button class="menu-btn active" onclick="showTab('scan')">📸 مسح</button>
             <button class="menu-btn" onclick="showTab('receive')">📥 توريد</button>
@@ -835,7 +820,7 @@
             <button class="menu-btn" onclick="showTab('logs')">📜 سجل</button>
         </div>
 
-        <!-- ===== تبويب المسح ===== -->
+        <!-- تبويب المسح -->
         <div id="tab-scan" class="tab-content active">
             <div class="btn-group">
                 <button class="action-btn primary" onclick="startScanner()" id="btn-start">📸 تشغيل</button>
@@ -858,6 +843,8 @@
                     <div><span class="label">📌 الباركود:</span> <span id="scan-product-barcode">---</span></div>
                     <div><span class="label">📊 الكمية الحالية:</span> <span id="scan-product-current-qty">0</span></div>
                     <div><span class="label">⚠️ أقل كمية:</span> <span id="scan-product-min">5</span></div>
+                    <div><span class="label">📏 وحدة القياس:</span> <span id="scan-product-unit">---</span></div>
+                    <div><span class="label">💰 سعر التكلفة:</span> <span id="scan-product-cost">---</span></div>
                     <div id="scan-product-tags" style="font-size:9px;color:var(--text-secondary);"></div>
                 </div>
                 <div class="form-group">
@@ -872,14 +859,34 @@
                     <label>⚠️ أقل كمية (تنبيه عند الوصول لها)</label>
                     <input type="number" id="scan-min-qty" placeholder="الحد الأدنى للمخزون" value="5" min="0" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
                 </div>
+                <div class="form-group" id="unit-field" style="margin-top:3px;">
+                    <label>📏 وحدة القياس</label>
+                    <input type="text" id="scan-unit" placeholder="مثال: حبة، كرتون، كجم، لتر" value="حبة" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                </div>
+                <div class="form-group" id="cost-field" style="margin-top:3px;">
+                    <label>💰 سعر التكلفة</label>
+                    <input type="number" id="scan-cost" placeholder="سعر الشراء" value="0" min="0" step="0.01" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                </div>
                 <div class="form-group" style="margin-top:3px;">
                     <label>🏷️ علامات (اختياري - مفصولة بفاصلة)</label>
                     <input type="text" id="scan-tags-input" placeholder="مثال: عالي الطلب, موسمي" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
                 </div>
                 <div id="recipient-field" class="hidden" style="margin-top:3px;">
                     <div class="form-group">
-                        <label>📝 اسم المستلم (اختياري)</label>
-                        <input type="text" id="scan-recipient" placeholder="أدخل اسم المستلم..." style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                        <label>📝 اسم المستلم / الجهة</label>
+                        <input type="text" id="scan-recipient" placeholder="أدخل اسم المستلم أو الجهة..." style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                    </div>
+                </div>
+                <div id="reason-field" class="hidden" style="margin-top:3px;">
+                    <div class="form-group">
+                        <label>📝 سبب الصرف</label>
+                        <select id="scan-reason" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                            <option value="استخدام داخلي">استخدام داخلي</option>
+                            <option value="بيع للعميل">بيع للعميل</option>
+                            <option value="تالف">تالف</option>
+                            <option value="نقل بين الفروع">نقل بين الفروع</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
                     </div>
                 </div>
                 <div id="expiry-toggle" style="margin-top:4px;">
@@ -931,7 +938,7 @@
             </div>
         </div>
 
-        <!-- ===== تبويب التوريد ===== -->
+        <!-- تبويب التوريد -->
         <div id="tab-receive" class="tab-content">
             <h3 style="font-size:14px;margin-bottom:6px;color:var(--text-primary);">📥 عمليات التوريد</h3>
             <div class="btn-group" style="margin-bottom:4px;">
@@ -944,7 +951,7 @@
             </div>
         </div>
 
-        <!-- ===== تبويب الصرف ===== -->
+        <!-- تبويب الصرف -->
         <div id="tab-dispatch" class="tab-content">
             <h3 style="font-size:14px;margin-bottom:6px;color:var(--text-primary);">📤 عمليات الصرف</h3>
             <div class="btn-group" style="margin-bottom:4px;">
@@ -957,7 +964,7 @@
             </div>
         </div>
 
-        <!-- ===== تبويب المخزون ===== -->
+        <!-- تبويب المخزون -->
         <div id="tab-inventory" class="tab-content">
             <div style="display:flex;gap:3px;margin-bottom:4px;flex-wrap:wrap;">
                 <button class="action-btn small" onclick="filterInventory('all')" id="filter-all" style="background:var(--success);">📦 الكل</button>
@@ -984,7 +991,7 @@
             <div id="inventory-list" class="inventory-list"></div>
         </div>
 
-        <!-- ===== تبويب البحث ===== -->
+        <!-- تبويب البحث -->
         <div id="tab-search" class="tab-content">
             <div class="search-filters">
                 <input type="text" id="search-query" placeholder="🔍 اسم أو باركود..." oninput="advancedSearch()" style="flex:2;">
@@ -1005,7 +1012,7 @@
             </div>
         </div>
 
-        <!-- ===== تبويب السجل ===== -->
+        <!-- تبويب السجل -->
         <div id="tab-logs" class="tab-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
                 <span style="color:var(--text-primary);font-size:13px;">📜 السجل</span>
@@ -1031,7 +1038,7 @@
             <div id="log-list" class="log-list"></div>
         </div>
 
-        <!-- ===== تبويب التقارير ===== -->
+        <!-- تبويب التقارير -->
         <div id="tab-reports" class="tab-content">
             <h3 style="font-size:13px;margin-bottom:4px;color:var(--text-primary);">📊 التقارير</h3>
             <div style="display:flex;gap:2px;margin-bottom:4px;flex-wrap:wrap;">
@@ -1060,6 +1067,8 @@
             <div style="margin-top:6px;">
                 <button class="action-btn info small" onclick="showTopProducts()" style="width:auto;padding:3px 10px;font-size:10px;">🏆 الأكثر توريداً</button>
                 <button class="action-btn danger small" onclick="showTopDispatch()" style="width:auto;padding:3px 10px;font-size:10px;">📤 الأكثر صرفاً</button>
+                <button class="action-btn warning small" onclick="showLowStockReport()" style="width:auto;padding:3px 10px;font-size:10px;">⚠️ تقرير المخزون المنخفض</button>
+                <button class="action-btn info small" onclick="showProductMovementReport()" style="width:auto;padding:3px 10px;font-size:10px;">📊 تقرير حركة منتج</button>
             </div>
             <div id="analysis-result" style="margin-top:4px;padding:6px;background:var(--bg-card);border-radius:8px;font-size:11px;min-height:20px;">
                 <div style="color:var(--text-secondary);">📌 اختر تحليلاً لعرض النتائج</div>
@@ -1069,10 +1078,10 @@
         <div class="status-box" id="status">📌 النظام جاهز</div>
     </div>
 
-    <!-- ===== Toast ===== -->
+    <!-- Toast -->
     <div id="toast" class="toast"></div>
 
-    <!-- ===== مودال المستخدمين ===== -->
+    <!-- مودال المستخدمين -->
     <div id="user-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('user-modal')">✕</button>
@@ -1081,7 +1090,7 @@
         </div>
     </div>
 
-    <!-- ===== مودال الموردين ===== -->
+    <!-- مودال الموردين -->
     <div id="supplier-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('supplier-modal')">✕</button>
@@ -1104,7 +1113,7 @@
         </div>
     </div>
 
-    <!-- ===== مودال التحذيرات ===== -->
+    <!-- مودال التحذيرات -->
     <div id="warnings-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('warnings-modal')">✕</button>
@@ -1116,7 +1125,7 @@
         </div>
     </div>
 
-    <!-- ===== مودال طباعة العمليات ===== -->
+    <!-- مودال طباعة العمليات -->
     <div id="print-logs-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('print-logs-modal')">✕</button>
@@ -1140,7 +1149,7 @@
         </div>
     </div>
 
-    <!-- ===== مودال التوريد اليدوي ===== -->
+    <!-- مودال التوريد اليدوي -->
     <div id="manual-receive-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('manual-receive-modal')">✕</button>
@@ -1161,6 +1170,10 @@
                     </div>
                     <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
                         <input type="text" id="manual-new-category" placeholder="التصنيف" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;" value="مستودع رئيسي">
+                        <input type="text" id="manual-new-unit" placeholder="وحدة القياس" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;" value="حبة">
+                        <input type="number" id="manual-new-cost" placeholder="سعر التكلفة" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;" value="0">
+                    </div>
+                    <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
                         <input type="number" id="manual-new-min" placeholder="أقل كمية" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;" value="5">
                         <input type="date" id="manual-new-expiry" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;">
                     </div>
@@ -1182,7 +1195,7 @@
         </div>
     </div>
 
-    <!-- ===== مودال الصرف اليدوي ===== -->
+    <!-- مودال الصرف اليدوي -->
     <div id="manual-dispatch-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('manual-dispatch-modal')">✕</button>
@@ -1206,8 +1219,18 @@
                         <button onclick="changeDispatchQty(1)" style="width:30px;height:30px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:16px;cursor:pointer;">+</button>
                     </div>
                     <div class="form-group" style="margin-top:4px;">
-                        <label>📝 اسم المستلم (اختياري)</label>
+                        <label>📝 اسم المستلم / الجهة</label>
                         <input type="text" id="manual-dispatch-recipient" placeholder="اسم المستلم..." style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    </div>
+                    <div class="form-group" style="margin-top:4px;">
+                        <label>📝 سبب الصرف</label>
+                        <select id="manual-dispatch-reason" style="width:100%;padding:6px;border-radius:8px;border:none;background:var(--bg-input);color:var(--text-primary);font-size:12px;text-align:center;">
+                            <option value="استخدام داخلي">استخدام داخلي</option>
+                            <option value="بيع للعميل">بيع للعميل</option>
+                            <option value="تالف">تالف</option>
+                            <option value="نقل بين الفروع">نقل بين الفروع</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
                     </div>
                     <button class="action-btn danger small" onclick="confirmManualDispatch()" style="margin-top:4px;padding:6px;font-size:11px;">📤 تأكيد الصرف</button>
                 </div>
@@ -1217,8 +1240,24 @@
 
     <script>
         // ============================================================
-        //  بيانات المستخدمين والصلاحيات المخصصة
+        //  الأمان وإدارة المستخدمين
         // ============================================================
+        // تشفير بسيط لكلمات المرور (يمكن تحسينه باستخدام bcrypt)
+        function hashPassword(password) {
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                const char = password.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return 'hash_' + hash;
+        }
+
+        function verifyPassword(password, hashed) {
+            return hashPassword(password) === hashed;
+        }
+
+        // هيكل الصلاحيات الافتراضية
         const DEFAULT_PERMISSIONS = {
             receive: true,
             dispatch: true,
@@ -1235,82 +1274,6 @@
             logs: true
         };
 
-        const DEFAULT_USERS_WITH_PERMS = {
-            admin: {
-                password: 'admin123',
-                role: 'admin',
-                name: 'مدير النظام',
-                permissions: { ...DEFAULT_PERMISSIONS }
-            },
-            supervisor: {
-                password: 'super123',
-                role: 'supervisor',
-                name: 'مشرف المخزون',
-                permissions: {
-                    receive: true,
-                    dispatch: true,
-                    add: true,
-                    edit: true,
-                    delete: false,
-                    print: true,
-                    export: true,
-                    users: false,
-                    backup: true,
-                    reports: true,
-                    scan: true,
-                    manual: true,
-                    logs: true
-                }
-            },
-            staff: {
-                password: 'staff123',
-                role: 'staff',
-                name: 'موظف المخزون',
-                permissions: {
-                    receive: true,
-                    dispatch: true,
-                    add: true,
-                    edit: false,
-                    delete: false,
-                    print: false,
-                    export: false,
-                    users: false,
-                    backup: false,
-                    reports: true,
-                    scan: true,
-                    manual: true,
-                    logs: true
-                }
-            },
-            guest: {
-                password: '',
-                role: 'guest',
-                name: 'زائر',
-                permissions: {
-                    receive: false,
-                    dispatch: false,
-                    add: false,
-                    edit: false,
-                    delete: false,
-                    print: false,
-                    export: false,
-                    users: false,
-                    backup: false,
-                    reports: true,
-                    scan: true,
-                    manual: false,
-                    logs: true
-                }
-            }
-        };
-
-        const USER_ROLES = {
-            admin: { label: 'مدير', color: 'admin' },
-            supervisor: { label: 'مشرف', color: 'supervisor' },
-            staff: { label: 'موظف', color: 'staff' },
-            guest: { label: 'ضيف', color: 'guest' }
-        };
-
         // ============================================================
         //  البيانات الأساسية
         // ============================================================
@@ -1319,8 +1282,7 @@
         let productHistory = {};
         let users = {};
         let suppliers = {};
-        let currentUser = 'guest';
-        let userRole = 'guest';
+        let currentUser = null;
         let isLoggedIn = false;
         let currentOperation = 'receive';
         let html5QrCode = null;
@@ -1353,16 +1315,14 @@
                     inventory = data.inventory || {};
                     logs = data.logs || [];
                     productHistory = data.productHistory || {};
-                    users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS_WITH_PERMS));
+                    users = data.users || {};
                     suppliers = data.suppliers || {};
                     console.log('📂 تم تحميل البيانات من التخزين المحلي');
                     updateUI();
-                    updatePermissionsUI();
                     updateSupplierSelects();
                     document.getElementById('stat-logs').textContent = logs.length;
                     updateWarningsBadge();
                     updateDashboardStats();
-                    updateBackupBadge();
                     setupAutoBackup();
                     return;
                 } catch (e) {
@@ -1370,34 +1330,30 @@
                 }
             }
 
-            users = JSON.parse(JSON.stringify(DEFAULT_USERS_WITH_PERMS));
+            users = {};
             suppliers = {};
             inventory = {};
             logs = [];
             productHistory = {};
             updateUI();
-            updatePermissionsUI();
             updateSupplierSelects();
             document.getElementById('stat-logs').textContent = logs.length;
             updateWarningsBadge();
             updateDashboardStats();
-            updateBackupBadge();
             setupAutoBackup();
 
-            try {
-                fetch('/api/inventory')
-                    .then(res => res.json())
-                    .then(data => {
-                        inventory = data.inventory || {};
-                        logs = data.logs || [];
-                        productHistory = data.productHistory || {};
-                        users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS_WITH_PERMS));
-                        suppliers = data.suppliers || {};
-                        saveToLocalStorage();
-                        updateUI();
-                    })
-                    .catch(() => console.log('🌐 لا يوجد اتصال بالسيرفر'));
-            } catch (e) {}
+            // التحقق من وجود مستخدمين، وإلا إنشاء حساب مدير
+            if (Object.keys(users).length === 0) {
+                document.getElementById('login-title').textContent = '🔐 إنشاء حساب المدير';
+                document.getElementById('first-user-setup').classList.remove('hidden');
+                document.getElementById('login-btn').textContent = '🚀 إنشاء حساب';
+                document.getElementById('confirm-password-group').classList.remove('hidden');
+            } else {
+                document.getElementById('login-title').textContent = '🔐 تسجيل الدخول';
+                document.getElementById('first-user-setup').classList.add('hidden');
+                document.getElementById('login-btn').textContent = '🚪 دخول';
+                document.getElementById('confirm-password-group').classList.add('hidden');
+            }
         }
 
         function saveToLocalStorage() {
@@ -1419,52 +1375,409 @@
         }
 
         // ============================================================
-        //  نظام الصلاحيات
+        //  نظام تسجيل الدخول والجلسات
         // ============================================================
-        function hasCustomPermission(username, perm) {
-            if (username === 'admin') return true;
-            const user = users[username];
-            if (!user || !user.permissions) return false;
-            if (user.permissions[perm] !== undefined) {
-                return user.permissions[perm] === true;
+        function handleLogin() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+
+            // حالة أول تشغيل: لا يوجد مستخدمين
+            if (Object.keys(users).length === 0) {
+                const confirmPass = document.getElementById('login-password-confirm').value;
+                if (!username || username.length < 3) {
+                    errorEl.textContent = '❌ اسم المستخدم يجب أن يكون 3 أحرف على الأقل';
+                    return;
+                }
+                if (!password || password.length < 4) {
+                    errorEl.textContent = '❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل';
+                    return;
+                }
+                if (password !== confirmPass) {
+                    errorEl.textContent = '❌ كلمة المرور غير مطابقة للتأكيد';
+                    return;
+                }
+
+                // إنشاء حساب المدير الأول
+                const hashedPass = hashPassword(password);
+                users[username] = {
+                    name: username,
+                    password: hashedPass,
+                    role: 'admin',
+                    permissions: { ...DEFAULT_PERMISSIONS }
+                };
+                saveData();
+                currentUser = username;
+                isLoggedIn = true;
+                errorEl.textContent = '';
+                document.getElementById('login-screen').classList.remove('active');
+                document.getElementById('app-content').classList.remove('hidden');
+                updateUI();
+                showToast(`✅ مرحباً ${username} - تم إنشاء حساب المدير`, '');
+                setTimeout(() => startScanner(), 500);
+                startAutoUpdate();
+                return;
             }
-            return DEFAULT_PERMISSIONS[perm] === true;
+
+            // تسجيل الدخول العادي
+            if (users[username] && verifyPassword(password, users[username].password)) {
+                currentUser = username;
+                isLoggedIn = true;
+                errorEl.textContent = '';
+                document.getElementById('login-screen').classList.remove('active');
+                document.getElementById('app-content').classList.remove('hidden');
+                updateUI();
+                showToast(`✅ مرحباً ${users[username].name || username}`, '');
+                setTimeout(() => startScanner(), 500);
+                startAutoUpdate();
+            } else {
+                errorEl.textContent = '❌ اسم المستخدم أو كلمة المرور خاطئة';
+            }
         }
 
-        function updatePermissionsUI() {
-            const perms = users[currentUser]?.permissions || DEFAULT_PERMISSIONS;
+        function startAutoUpdate() {
+            if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+            autoUpdateInterval = setInterval(() => {
+                if (isLoggedIn) {
+                    loadData();
+                    updateStatus('🔄 تم تحديث البيانات تلقائياً');
+                }
+            }, 30000);
+        }
 
-            document.getElementById('op-receive').disabled = !hasCustomPermission(currentUser, 'receive');
-            document.getElementById('op-dispatch').disabled = !hasCustomPermission(currentUser, 'dispatch');
-            document.getElementById('receive-scan-btn').disabled = !hasCustomPermission(currentUser, 'scan');
-            document.getElementById('dispatch-scan-btn').disabled = !hasCustomPermission(currentUser, 'scan');
-            document.getElementById('search-scan-btn').disabled = !hasCustomPermission(currentUser, 'scan');
-            document.getElementById('btn-start').disabled = !hasCustomPermission(currentUser, 'scan');
+        function logoutUser() {
+            isLoggedIn = false;
+            stopScanner();
+            if (autoUpdateInterval) {
+                clearInterval(autoUpdateInterval);
+                autoUpdateInterval = null;
+            }
+            if (searchScanner) {
+                try { searchScanner.stop();
+                    searchScanner.clear(); } catch (e) {}
+                searchScanner = null;
+                searchScannerActive = false;
+            }
+            operationCart = [];
+            updateCartUI();
+            document.getElementById('app-content').classList.add('hidden');
+            document.getElementById('login-screen').classList.add('active');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-error').textContent = '';
+            showToast('👋 تم تسجيل الخروج', '');
+            currentUser = null;
+        }
+
+        // ============================================================
+        //  نظام الصلاحيات الدقيق
+        // ============================================================
+        function hasPermission(perm) {
+            if (!currentUser) return false;
+            if (users[currentUser]?.role === 'admin') return true;
+            const user = users[currentUser];
+            if (!user || !user.permissions) return false;
+            return user.permissions[perm] === true;
+        }
+
+        function requirePermission(perm, action) {
+            if (!hasPermission(perm)) {
+                showToast(`⚠️ غير مسموح: ${action}`, 'warning');
+                return false;
+            }
+            return true;
+        }
+
+        function getCurrentUserName() {
+            return users[currentUser]?.name || currentUser || 'مستخدم';
+        }
+
+        function getCurrentUserRole() {
+            return users[currentUser]?.role || 'guest';
+        }
+
+        // ============================================================
+        //  إدارة المستخدمين (مع الصلاحيات)
+        // ============================================================
+        function showUserModal() {
+            if (!requirePermission('users', 'إدارة المستخدمين')) return;
+
+            const modal = document.getElementById('user-modal');
+            modal.classList.add('active');
+            const body = document.getElementById('user-modal-body');
+
+            const entries = Object.entries(users);
+            let usersListHtml = entries.map(([username, data]) => `
+                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--border);font-size:12px;">
+                    <div>
+                        <span style="font-weight:bold;">${data.name || username}</span>
+                        <span style="font-size:9px;color:var(--text-secondary);">@${username}</span>
+                        <span style="font-size:8px;padding:1px 6px;border-radius:10px;color:#fff;background:var(--${data.role === 'admin' ? 'admin' : data.role === 'supervisor' ? 'supervisor' : data.role === 'staff' ? 'staff' : 'guest'}-color);">${data.role === 'admin' ? 'مدير' : data.role === 'supervisor' ? 'مشرف' : data.role === 'staff' ? 'موظف' : 'ضيف'}</span>
+                        ${username === currentUser ? ' <span style="font-size:8px;color:var(--success);">(حالي)</span>' : ''}
+                    </div>
+                    <div style="display:flex;gap:3px;">
+                        ${username !== currentUser ? `<button onclick="switchUser('${username}')" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px;">🔄</button>` : ''}
+                        <button onclick="editUserPermissions('${username}')" style="background:transparent;border:none;color:var(--warning);cursor:pointer;font-size:11px;">🔐</button>
+                        ${username !== currentUser ? `<button onclick="deleteUser('${username}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            body.innerHTML = `
+                <div style="margin-bottom:8px;">
+                    <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">👥 المستخدمين (${entries.length})</div>
+                    ${usersListHtml}
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:6px;">
+                    <button class="action-btn warning small" onclick="showAddUserForm()" style="width:auto;padding:3px 10px;font-size:10px;">➕ إضافة مستخدم</button>
+                </div>
+                <div id="add-user-form" class="hidden" style="margin-top:6px;padding:8px;background:var(--bg-primary);border-radius:8px;">
+                    <div class="form-group"><label>اسم المستخدم</label><input type="text" id="new-username" placeholder="اسم المستخدم"></div>
+                    <div class="form-group"><label>الاسم الظاهر</label><input type="text" id="new-display-name" placeholder="الاسم الظاهر"></div>
+                    <div class="form-group"><label>كلمة المرور</label><input type="password" id="new-password" placeholder="كلمة المرور"></div>
+                    <div class="form-group"><label>الدور</label>
+                        <select id="new-role">
+                            <option value="admin">👑 مدير</option>
+                            <option value="supervisor">⭐ مشرف</option>
+                            <option value="staff">👤 موظف</option>
+                            <option value="guest">👤 ضيف</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        <button class="action-btn" onclick="addNewUser()">✅ إضافة</button>
+                        <button class="action-btn secondary" onclick="hideAddUserForm()">❌ إلغاء</button>
+                    </div>
+                </div>
+                <div id="edit-permissions-panel" class="hidden" style="margin-top:8px;padding:8px;background:var(--bg-primary);border-radius:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="color:var(--text-secondary);font-size:11px;">🔐 صلاحيات: <span id="edit-username-display"></span></span>
+                        <button onclick="closeEditPermissions()" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:12px;">✕</button>
+                    </div>
+                    <div class="permissions-grid">
+                        <label><input type="checkbox" id="perm-receive"> 📥 توريد</label>
+                        <label><input type="checkbox" id="perm-dispatch"> 📤 صرف</label>
+                        <label><input type="checkbox" id="perm-add"> ➕ إضافة منتج</label>
+                        <label><input type="checkbox" id="perm-edit"> ✏️ تعديل منتج</label>
+                        <label><input type="checkbox" id="perm-delete"> 🗑️ حذف منتج</label>
+                        <label><input type="checkbox" id="perm-print"> 🖨️ طباعة</label>
+                        <label><input type="checkbox" id="perm-export"> 📤 تصدير</label>
+                        <label><input type="checkbox" id="perm-users"> 👥 إدارة مستخدمين</label>
+                        <label><input type="checkbox" id="perm-backup"> 💾 نسخ احتياطي</label>
+                        <label><input type="checkbox" id="perm-reports"> 📊 تقارير</label>
+                        <label><input type="checkbox" id="perm-scan"> 📸 مسح</label>
+                        <label><input type="checkbox" id="perm-manual"> ✏️ يدوي</label>
+                    </div>
+                    <input type="hidden" id="edit-username">
+                    <button class="action-btn small" onclick="saveUserPermissions()" style="margin-top:4px;padding:4px 10px;font-size:10px;">💾 حفظ الصلاحيات</button>
+                </div>
+                <button class="action-btn secondary small" onclick="closeModal('user-modal')" style="margin-top:6px;">🔙 إغلاق</button>
+            `;
+        }
+
+        function switchUser(username) {
+            if (users[username]) {
+                currentUser = username;
+                updateUI();
+                showToast(`👤 تم التبديل إلى ${users[username].name}`, '');
+                closeModal('user-modal');
+            }
+        }
+
+        function deleteUser(username) {
+            if (username === currentUser) { showToast('❌ لا يمكن حذف المستخدم الحالي', 'error'); return; }
+            if (!hasPermission('users')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (confirm(`🗑️ حذف "${users[username]?.name || username}"؟`)) {
+                delete users[username];
+                saveData();
+                showUserModal();
+                showToast(`🗑️ تم الحذف`, '');
+            }
+        }
+
+        function showAddUserForm() {
+            document.getElementById('add-user-form').classList.remove('hidden');
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('add-user-form').classList.add('hidden');
+            document.getElementById('new-username').value = '';
+            document.getElementById('new-display-name').value = '';
+            document.getElementById('new-password').value = '';
+        }
+
+        function addNewUser() {
+            if (!hasPermission('users')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+
+            const username = document.getElementById('new-username').value.trim();
+            const displayName = document.getElementById('new-display-name').value.trim();
+            const password = document.getElementById('new-password').value;
+            const role = document.getElementById('new-role').value;
+
+            if (!username) { showToast('❌ يرجى إدخال اسم المستخدم', 'error'); return; }
+            if (users[username]) { showToast('❌ هذا المستخدم موجود', 'error'); return; }
+            if (!password) { showToast('❌ يرجى إدخال كلمة المرور', 'error'); return; }
+            if (password.length < 4) { showToast('❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل', 'error'); return; }
+
+            let permissions = { ...DEFAULT_PERMISSIONS };
+            if (role === 'guest') {
+                permissions = {
+                    receive: false,
+                    dispatch: false,
+                    add: false,
+                    edit: false,
+                    delete: false,
+                    print: false,
+                    export: false,
+                    users: false,
+                    backup: false,
+                    reports: true,
+                    scan: true,
+                    manual: false,
+                    logs: true
+                };
+            } else if (role === 'staff') {
+                permissions = {
+                    receive: true,
+                    dispatch: true,
+                    add: true,
+                    edit: false,
+                    delete: false,
+                    print: false,
+                    export: false,
+                    users: false,
+                    backup: false,
+                    reports: true,
+                    scan: true,
+                    manual: true,
+                    logs: true
+                };
+            } else if (role === 'supervisor') {
+                permissions = {
+                    receive: true,
+                    dispatch: true,
+                    add: true,
+                    edit: true,
+                    delete: false,
+                    print: true,
+                    export: true,
+                    users: false,
+                    backup: true,
+                    reports: true,
+                    scan: true,
+                    manual: true,
+                    logs: true
+                };
+            }
+
+            const hashedPass = hashPassword(password);
+            users[username] = {
+                name: displayName || username,
+                password: hashedPass,
+                role: role,
+                permissions: permissions
+            };
+
+            saveData();
+            updateUI();
+            hideAddUserForm();
+            showToast(`✅ تم إضافة ${displayName || username}`, '');
+            showUserModal();
+        }
+
+        function editUserPermissions(username) {
+            if (!hasPermission('users')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            const user = users[username];
+            if (!user) return;
+
+            document.getElementById('edit-username').value = username;
+            document.getElementById('edit-username-display').textContent = user.name || username;
+
+            const perms = user.permissions || DEFAULT_PERMISSIONS;
+            document.getElementById('perm-receive').checked = perms.receive || false;
+            document.getElementById('perm-dispatch').checked = perms.dispatch || false;
+            document.getElementById('perm-add').checked = perms.add || false;
+            document.getElementById('perm-edit').checked = perms.edit || false;
+            document.getElementById('perm-delete').checked = perms.delete || false;
+            document.getElementById('perm-print').checked = perms.print || false;
+            document.getElementById('perm-export').checked = perms.export || false;
+            document.getElementById('perm-users').checked = perms.users || false;
+            document.getElementById('perm-backup').checked = perms.backup || false;
+            document.getElementById('perm-reports').checked = perms.reports || false;
+            document.getElementById('perm-scan').checked = perms.scan || false;
+            document.getElementById('perm-manual').checked = perms.manual || false;
+
+            document.getElementById('edit-permissions-panel').classList.remove('hidden');
+        }
+
+        function closeEditPermissions() {
+            document.getElementById('edit-permissions-panel').classList.add('hidden');
+        }
+
+        function saveUserPermissions() {
+            if (!hasPermission('users')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+
+            const username = document.getElementById('edit-username').value;
+            if (!users[username]) {
+                showToast('❌ المستخدم غير موجود', 'error');
+                return;
+            }
+
+            const permissions = {
+                receive: document.getElementById('perm-receive').checked,
+                dispatch: document.getElementById('perm-dispatch').checked,
+                add: document.getElementById('perm-add').checked,
+                edit: document.getElementById('perm-edit').checked,
+                delete: document.getElementById('perm-delete').checked,
+                print: document.getElementById('perm-print').checked,
+                export: document.getElementById('perm-export').checked,
+                users: document.getElementById('perm-users').checked,
+                backup: document.getElementById('perm-backup').checked,
+                reports: document.getElementById('perm-reports').checked,
+                scan: document.getElementById('perm-scan').checked,
+                manual: document.getElementById('perm-manual').checked,
+                logs: true
+            };
+
+            users[username].permissions = permissions;
+            saveData();
+            updateUI();
+            showToast(`✅ تم حفظ صلاحيات ${users[username].name}`, '');
+            closeEditPermissions();
+            showUserModal();
+        }
+
+        // ============================================================
+        //  تحديث واجهة الصلاحيات
+        // ============================================================
+        function updatePermissionsUI() {
+            const isAdmin = users[currentUser]?.role === 'admin';
+
+            document.getElementById('op-receive').disabled = !hasPermission('receive');
+            document.getElementById('op-dispatch').disabled = !hasPermission('dispatch');
+            document.getElementById('receive-scan-btn').disabled = !hasPermission('scan');
+            document.getElementById('dispatch-scan-btn').disabled = !hasPermission('scan');
+            document.getElementById('search-scan-btn').disabled = !hasPermission('scan');
+            document.getElementById('btn-start').disabled = !hasPermission('scan');
 
             document.querySelectorAll('[id*="print"]').forEach(el => {
                 if (el.id !== 'print-options') {
-                    el.disabled = !hasCustomPermission(currentUser, 'print');
+                    el.disabled = !hasPermission('print');
                 }
             });
 
             document.querySelectorAll('[id*="export"]').forEach(el => {
-                el.disabled = !hasCustomPermission(currentUser, 'export');
+                el.disabled = !hasPermission('export');
             });
 
-            document.getElementById('backup-btn').disabled = !hasCustomPermission(currentUser, 'backup');
-            document.getElementById('restore-btn').disabled = !hasCustomPermission(currentUser, 'backup');
-
-            const usersBtn = document.querySelector('[onclick="showUserModal()"]');
-            if (usersBtn) {
-                usersBtn.disabled = !hasCustomPermission(currentUser, 'users');
-                usersBtn.style.opacity = hasCustomPermission(currentUser, 'users') ? '1' : '0.4';
-            }
+            document.getElementById('backup-btn').disabled = !hasPermission('backup');
+            document.getElementById('restore-btn').disabled = !hasPermission('backup');
 
             const userData = users[currentUser] || { name: 'مستخدم', role: 'guest' };
             document.getElementById('current-username').textContent = userData.name || currentUser;
-            const roleInfo = USER_ROLES[userData.role] || USER_ROLES.guest;
-            document.getElementById('current-role').textContent = `(${roleInfo.label})`;
-            document.getElementById('user-badge').style.background = `var(--${roleInfo.color}-color)`;
+            const roleLabels = { admin: 'مدير', supervisor: 'مشرف', staff: 'موظف', guest: 'ضيف' };
+            document.getElementById('current-role').textContent = `(${roleLabels[userData.role] || 'ضيف'})`;
+            const roleColors = { admin: 'admin', supervisor: 'supervisor', staff: 'staff', guest: 'guest' };
+            document.getElementById('user-badge').style.background = `var(--${roleColors[userData.role] || 'guest'}-color)`;
 
             updateStatus(`👤 ${userData.name || currentUser} - الصلاحيات محددة`);
         }
@@ -1473,6 +1786,8 @@
         //  النسخ الاحتياطي
         // ============================================================
         function setupAutoBackup() {
+            if (!hasPermission('backup')) return;
+
             const lastBackup = localStorage.getItem('lastBackupDate');
             const now = new Date().toISOString().split('T')[0];
 
@@ -1482,12 +1797,12 @@
 
             if (backupInterval) clearInterval(backupInterval);
             backupInterval = setInterval(() => {
-                performBackup();
+                if (hasPermission('backup')) performBackup();
             }, 24 * 60 * 60 * 1000);
         }
 
         function performBackup() {
-            if (!hasCustomPermission(currentUser, 'backup')) return;
+            if (!hasPermission('backup')) return;
 
             try {
                 const now = new Date();
@@ -1504,7 +1819,7 @@
                         date: dateStr,
                         time: timeStr,
                         version: '1.0',
-                        user: users[currentUser]?.name || currentUser,
+                        user: getCurrentUserName(),
                         totalProducts: Object.keys(inventory).length,
                         totalLogs: logs.length
                     }
@@ -1524,40 +1839,20 @@
 
                 showToast(`💾 تم النسخ الاحتياطي ${dateStr} ${timeStr}`, '');
                 updateStatus(`💾 آخر نسخ: ${dateStr} ${timeStr}`);
-                updateBackupBadge();
 
             } catch (error) {
                 console.error('خطأ في النسخ الاحتياطي:', error);
             }
         }
 
-        function updateBackupBadge() {
-            const lastBackup = localStorage.getItem('lastBackupDate');
-            const badge = document.getElementById('backup-badge');
-            if (badge) {
-                if (lastBackup) {
-                    badge.textContent = `💾 ${lastBackup}`;
-                    badge.style.display = 'inline';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-        }
-
         function backupData() {
-            if (!hasCustomPermission(currentUser, 'backup')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('backup', 'نسخ احتياطي')) return;
             performBackup();
             showToast('💾 جاري إنشاء نسخة احتياطية...', '');
         }
 
         function restoreData() {
-            if (!hasCustomPermission(currentUser, 'backup')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('backup', 'استعادة نسخة')) return;
 
             const backup = localStorage.getItem('inventoryBackup');
             if (!backup) {
@@ -1577,7 +1872,7 @@
                 logs = data.logs || [];
                 productHistory = data.productHistory || {};
                 suppliers = data.suppliers || {};
-                users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS_WITH_PERMS));
+                users = data.users || {};
 
                 saveData();
                 updateUI();
@@ -1669,282 +1964,6 @@
         }
 
         // ============================================================
-        //  المستخدمين
-        // ============================================================
-        function doLogin() {
-            const username = document.getElementById('login-username').value.trim();
-            const password = document.getElementById('login-password').value;
-            const errorEl = document.getElementById('login-error');
-
-            if (users[username] && users[username].password === password) {
-                currentUser = username;
-                userRole = users[username].role;
-                isLoggedIn = true;
-                errorEl.textContent = '';
-                document.getElementById('login-screen').classList.remove('active');
-                document.getElementById('app-content').classList.remove('hidden');
-                updatePermissionsUI();
-                updateUI();
-                showToast(`✅ مرحباً ${users[username].name}`, '');
-                setTimeout(() => startScanner(), 500);
-                if (autoUpdateInterval) clearInterval(autoUpdateInterval);
-                autoUpdateInterval = setInterval(() => {
-                    if (isLoggedIn) {
-                        loadData();
-                        updateStatus('🔄 تم تحديث البيانات تلقائياً');
-                    }
-                }, 30000);
-            } else {
-                errorEl.textContent = '❌ اسم المستخدم أو كلمة المرور خاطئة';
-            }
-        }
-
-        function logoutUser() {
-            isLoggedIn = false;
-            stopScanner();
-            if (autoUpdateInterval) {
-                clearInterval(autoUpdateInterval);
-                autoUpdateInterval = null;
-            }
-            if (searchScanner) {
-                try { searchScanner.stop();
-                    searchScanner.clear(); } catch (e) {}
-                searchScanner = null;
-                searchScannerActive = false;
-            }
-            operationCart = [];
-            updateCartUI();
-            document.getElementById('app-content').classList.add('hidden');
-            document.getElementById('login-screen').classList.add('active');
-            document.getElementById('login-username').value = '';
-            document.getElementById('login-password').value = '';
-            document.getElementById('login-error').textContent = '';
-            showToast('👋 تم تسجيل الخروج', '');
-            currentUser = 'guest';
-            userRole = 'guest';
-        }
-
-        function showUserModal() {
-            if (!hasCustomPermission(currentUser, 'users')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
-
-            const modal = document.getElementById('user-modal');
-            modal.classList.add('active');
-            const body = document.getElementById('user-modal-body');
-
-            const entries = Object.entries(users);
-            let usersListHtml = entries.map(([username, data]) => `
-                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--border);font-size:12px;">
-                    <div>
-                        <span style="font-weight:bold;">${data.name || username}</span>
-                        <span style="font-size:9px;color:var(--text-secondary);">@${username}</span>
-                        <span style="font-size:8px;padding:1px 6px;border-radius:10px;color:#fff;background:var(--${USER_ROLES[data.role]?.color || 'guest'}-color);">${USER_ROLES[data.role]?.label || 'ضيف'}</span>
-                        ${username === currentUser ? ' <span style="font-size:8px;color:var(--success);">(حالي)</span>' : ''}
-                    </div>
-                    <div style="display:flex;gap:3px;">
-                        ${username !== currentUser ? `<button onclick="switchUser('${username}')" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px;">🔄</button>` : ''}
-                        <button onclick="editUserPermissions('${username}')" style="background:transparent;border:none;color:var(--warning);cursor:pointer;font-size:11px;">🔐</button>
-                        ${username !== 'admin' ? `<button onclick="deleteUser('${username}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">🗑️</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
-
-            body.innerHTML = `
-                <div style="margin-bottom:8px;">
-                    <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">👥 المستخدمين</div>
-                    ${usersListHtml}
-                </div>
-                <div style="border-top:1px solid var(--border);padding-top:6px;">
-                    <button class="action-btn warning small" onclick="showAddUserForm()" style="width:auto;padding:3px 10px;font-size:10px;">➕ إضافة مستخدم</button>
-                </div>
-                <div id="add-user-form" class="hidden" style="margin-top:6px;padding:8px;background:var(--bg-primary);border-radius:8px;">
-                    <div class="form-group"><label>اسم المستخدم</label><input type="text" id="new-username" placeholder="اسم المستخدم"></div>
-                    <div class="form-group"><label>الاسم الظاهر</label><input type="text" id="new-display-name" placeholder="الاسم الظاهر"></div>
-                    <div class="form-group"><label>كلمة المرور</label><input type="password" id="new-password" placeholder="كلمة المرور"></div>
-                    <div class="form-group"><label>الدور</label>
-                        <select id="new-role">
-                            <option value="admin">👑 مدير</option>
-                            <option value="supervisor">⭐ مشرف</option>
-                            <option value="staff">👤 موظف</option>
-                            <option value="guest">👤 ضيف</option>
-                        </select>
-                    </div>
-                    <div style="display:flex;gap:4px;">
-                        <button class="action-btn" onclick="addNewUser()">✅ إضافة</button>
-                        <button class="action-btn secondary" onclick="hideAddUserForm()">❌ إلغاء</button>
-                    </div>
-                </div>
-                <div id="edit-permissions-panel" class="hidden" style="margin-top:8px;padding:8px;background:var(--bg-primary);border-radius:8px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                        <span style="color:var(--text-secondary);font-size:11px;">🔐 صلاحيات: <span id="edit-username-display"></span></span>
-                        <button onclick="closeEditPermissions()" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:12px;">✕</button>
-                    </div>
-                    <div class="permissions-grid">
-                        <label><input type="checkbox" id="perm-receive"> 📥 توريد</label>
-                        <label><input type="checkbox" id="perm-dispatch"> 📤 صرف</label>
-                        <label><input type="checkbox" id="perm-add"> ➕ إضافة منتج</label>
-                        <label><input type="checkbox" id="perm-edit"> ✏️ تعديل منتج</label>
-                        <label><input type="checkbox" id="perm-delete"> 🗑️ حذف منتج</label>
-                        <label><input type="checkbox" id="perm-print"> 🖨️ طباعة</label>
-                        <label><input type="checkbox" id="perm-export"> 📤 تصدير</label>
-                        <label><input type="checkbox" id="perm-users"> 👥 إدارة مستخدمين</label>
-                        <label><input type="checkbox" id="perm-backup"> 💾 نسخ احتياطي</label>
-                        <label><input type="checkbox" id="perm-reports"> 📊 تقارير</label>
-                        <label><input type="checkbox" id="perm-scan"> 📸 مسح</label>
-                        <label><input type="checkbox" id="perm-manual"> ✏️ يدوي</label>
-                    </div>
-                    <input type="hidden" id="edit-username">
-                    <button class="action-btn small" onclick="saveUserPermissions()" style="margin-top:4px;padding:4px 10px;font-size:10px;">💾 حفظ الصلاحيات</button>
-                </div>
-                <button class="action-btn secondary small" onclick="closeModal('user-modal')" style="margin-top:6px;">🔙 إغلاق</button>
-            `;
-        }
-
-        function switchUser(username) {
-            if (users[username]) {
-                currentUser = username;
-                userRole = users[username].role;
-                updatePermissionsUI();
-                updateUI();
-                showToast(`👤 تم التبديل إلى ${users[username].name}`, '');
-                closeModal('user-modal');
-            }
-        }
-
-        function deleteUser(username) {
-            if (username === 'admin') { showToast('❌ لا يمكن حذف المدير', 'error'); return; }
-            if (username === currentUser) { showToast('❌ لا يمكن حذف المستخدم الحالي', 'error'); return; }
-            if (confirm(`🗑️ حذف "${users[username]?.name || username}"؟`)) {
-                delete users[username];
-                saveData();
-                showUserModal();
-                showToast(`🗑️ تم الحذف`, '');
-            }
-        }
-
-        function showAddUserForm() {
-            document.getElementById('add-user-form').classList.remove('hidden');
-        }
-
-        function hideAddUserForm() {
-            document.getElementById('add-user-form').classList.add('hidden');
-            document.getElementById('new-username').value = '';
-            document.getElementById('new-display-name').value = '';
-            document.getElementById('new-password').value = '';
-        }
-
-        function addNewUser() {
-            const username = document.getElementById('new-username').value.trim();
-            const displayName = document.getElementById('new-display-name').value.trim();
-            const password = document.getElementById('new-password').value;
-            const role = document.getElementById('new-role').value;
-
-            if (!username) { showToast('❌ يرجى إدخال اسم المستخدم', 'error'); return; }
-            if (users[username]) { showToast('❌ هذا المستخدم موجود', 'error'); return; }
-            if (!password && role !== 'guest') { showToast('❌ يرجى إدخال كلمة المرور', 'error'); return; }
-
-            let permissions = { ...DEFAULT_PERMISSIONS };
-            if (role === 'guest') {
-                permissions = { ...DEFAULT_PERMISSIONS };
-                permissions.receive = false;
-                permissions.dispatch = false;
-                permissions.add = false;
-                permissions.edit = false;
-                permissions.delete = false;
-                permissions.print = false;
-                permissions.export = false;
-                permissions.users = false;
-                permissions.backup = false;
-                permissions.manual = false;
-            } else if (role === 'staff') {
-                permissions = { ...DEFAULT_PERMISSIONS };
-                permissions.delete = false;
-                permissions.print = false;
-                permissions.export = false;
-                permissions.users = false;
-                permissions.backup = false;
-            } else if (role === 'supervisor') {
-                permissions = { ...DEFAULT_PERMISSIONS };
-                permissions.delete = false;
-                permissions.users = false;
-            }
-
-            users[username] = {
-                name: displayName || username,
-                password: password || '',
-                role: role,
-                permissions: permissions
-            };
-
-            saveData();
-            updateUI();
-            hideAddUserForm();
-            showToast(`✅ تم إضافة ${displayName || username}`, '');
-            showUserModal();
-        }
-
-        function editUserPermissions(username) {
-            const user = users[username];
-            if (!user) return;
-
-            document.getElementById('edit-username').value = username;
-            document.getElementById('edit-username-display').textContent = user.name || username;
-
-            const perms = user.permissions || DEFAULT_PERMISSIONS;
-            document.getElementById('perm-receive').checked = perms.receive || false;
-            document.getElementById('perm-dispatch').checked = perms.dispatch || false;
-            document.getElementById('perm-add').checked = perms.add || false;
-            document.getElementById('perm-edit').checked = perms.edit || false;
-            document.getElementById('perm-delete').checked = perms.delete || false;
-            document.getElementById('perm-print').checked = perms.print || false;
-            document.getElementById('perm-export').checked = perms.export || false;
-            document.getElementById('perm-users').checked = perms.users || false;
-            document.getElementById('perm-backup').checked = perms.backup || false;
-            document.getElementById('perm-reports').checked = perms.reports || false;
-            document.getElementById('perm-scan').checked = perms.scan || false;
-            document.getElementById('perm-manual').checked = perms.manual || false;
-
-            document.getElementById('edit-permissions-panel').classList.remove('hidden');
-        }
-
-        function closeEditPermissions() {
-            document.getElementById('edit-permissions-panel').classList.add('hidden');
-        }
-
-        function saveUserPermissions() {
-            const username = document.getElementById('edit-username').value;
-            if (!users[username]) {
-                showToast('❌ المستخدم غير موجود', 'error');
-                return;
-            }
-
-            const permissions = {
-                receive: document.getElementById('perm-receive').checked,
-                dispatch: document.getElementById('perm-dispatch').checked,
-                add: document.getElementById('perm-add').checked,
-                edit: document.getElementById('perm-edit').checked,
-                delete: document.getElementById('perm-delete').checked,
-                print: document.getElementById('perm-print').checked,
-                export: document.getElementById('perm-export').checked,
-                users: document.getElementById('perm-users').checked,
-                backup: document.getElementById('perm-backup').checked,
-                reports: document.getElementById('perm-reports').checked,
-                scan: document.getElementById('perm-scan').checked,
-                manual: document.getElementById('perm-manual').checked,
-                logs: true
-            };
-
-            users[username].permissions = permissions;
-            saveData();
-            updateUI();
-            showToast(`✅ تم حفظ صلاحيات ${users[username].name}`, '');
-            closeEditPermissions();
-            showUserModal();
-        }
-
-        // ============================================================
         //  الموردين
         // ============================================================
         function updateSupplierSelects() {
@@ -1984,7 +2003,7 @@
                     </div>
                     <div>
                         <span class="sphone">📞 ${data.phone || ''}</span>
-                        <button onclick="event.stopPropagation();deleteSupplier('${name}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">🗑️</button>
+                        ${hasPermission('delete') ? `<button onclick="event.stopPropagation();deleteSupplier('${name}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">🗑️</button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -2008,6 +2027,8 @@
         }
 
         function confirmAddSupplier() {
+            if (!hasPermission('add')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+
             const name = document.getElementById('new-supplier-name').value.trim();
             const phone = document.getElementById('new-supplier-phone').value.trim();
             const address = document.getElementById('new-supplier-address').value.trim();
@@ -2025,6 +2046,7 @@
         }
 
         function deleteSupplier(name) {
+            if (!hasPermission('delete')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             if (confirm(`🗑️ حذف المورد "${name}"؟`)) {
                 delete suppliers[name];
                 saveData();
@@ -2048,6 +2070,8 @@
         }
 
         function addNewSupplierFromScan() {
+            if (!hasPermission('add')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+
             const name = prompt('📝 أدخل اسم المورد الجديد:');
             if (!name || !name.trim()) return;
             if (suppliers[name]) { showToast('❌ هذا المورد موجود', 'error'); return; }
@@ -2160,7 +2184,7 @@
             const now = new Date();
             const dateStr = now.toLocaleDateString('ar-SA');
             const timeStr = now.toLocaleTimeString('ar-SA');
-            const user = users[currentUser]?.name || currentUser || 'غير محدد';
+            const user = getCurrentUserName();
 
             let html = `
                 <html dir="rtl">
@@ -2235,12 +2259,8 @@
         //  طباعة العمليات مع تحديد التاريخ والنوع
         // ============================================================
         function showPrintLogsModal() {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
             document.getElementById('print-logs-modal').classList.add('active');
-            // تعيين التواريخ الافتراضية
             const today = new Date();
             const monthAgo = new Date();
             monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -2259,10 +2279,7 @@
         }
 
         function printFilteredLogs() {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
 
             const from = document.getElementById('print-date-from').value;
             const to = document.getElementById('print-date-to').value;
@@ -2272,11 +2289,9 @@
                 return;
             }
 
-            // تحويل التواريخ إلى كائن Date للمقارنة الصحيحة
             const fromDate = new Date(from + 'T00:00:00');
             const toDate = new Date(to + 'T23:59:59');
 
-            // دالة مساعدة لتحويل الأرقام العربية إلى إنجليزية
             const arabicToEnglish = (str) => {
                 const map = {
                     '٠': '0', '١': '1', '٢': '2', '٣': '3',
@@ -2286,30 +2301,25 @@
                 return str.replace(/[٠-٩]/g, d => map[d]);
             };
 
-            // دالة لاستخراج التاريخ من النص بطرق متعددة
             const extractDate = (timeStr) => {
                 if (!timeStr) return null;
-                
+
                 try {
-                    // محاولة 1: تحويل مباشر
                     let date = new Date(timeStr);
                     if (!isNaN(date.getTime())) return date;
 
-                    // محاولة 2: البحث عن صيغة YYYY/MM/DD
                     let match = timeStr.match(/(\d{4})\/(\d{2})\/(\d{2})/);
                     if (match) {
                         date = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
                         if (!isNaN(date.getTime())) return date;
                     }
 
-                    // محاولة 3: البحث عن صيغة DD/MM/YYYY
                     match = timeStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
                     if (match) {
                         date = new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
                         if (!isNaN(date.getTime())) return date;
                     }
 
-                    // محاولة 4: إذا كان التاريخ بأرقام عربية
                     const englishStr = arabicToEnglish(timeStr);
                     match = englishStr.match(/(\d{4})\/(\d{2})\/(\d{2})/);
                     if (match) {
@@ -2317,7 +2327,6 @@
                         if (!isNaN(date.getTime())) return date;
                     }
 
-                    // محاولة 5: استخدام التاريخ من خاصية isoTime إذا وجدت
                     const log = logs.find(l => l.time === timeStr);
                     if (log && log.isoTime) {
                         date = new Date(log.isoTime);
@@ -2326,37 +2335,31 @@
 
                     return null;
                 } catch (e) {
-                    console.warn('خطأ في تحويل التاريخ:', timeStr, e);
                     return null;
                 }
             };
 
-            // تصفية السجلات حسب التاريخ
             let filteredLogs = logs.filter(l => {
                 if (!l.time) return false;
-                
+
                 const logDate = extractDate(l.time);
                 if (!logDate) return false;
-                
-                // ضبط الوقت ليكون من بداية اليوم
+
                 const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
                 return logDateOnly >= fromDate && logDateOnly <= toDate;
             });
 
-            // تصفية حسب النوع المحدد
             if (selectedPrintType === 'receive') {
                 filteredLogs = filteredLogs.filter(l => l.type === 'receive');
             } else if (selectedPrintType === 'dispatch') {
                 filteredLogs = filteredLogs.filter(l => l.type === 'dispatch');
             }
 
-            // التحقق من وجود عمليات
             if (filteredLogs.length === 0) {
                 showToast('⚠️ لا توجد عمليات للطباعة', 'warning');
                 return;
             }
 
-            // أسماء الأنواع للعرض
             const typeNames = {
                 all: 'جميع العمليات',
                 receive: 'عمليات التوريد',
@@ -2364,13 +2367,11 @@
             };
 
             const title = `تقرير العمليات - ${typeNames[selectedPrintType] || 'جميع العمليات'}`;
-            
-            // حساب الإحصائيات
+
             const totalIn = filteredLogs.filter(l => l.type === 'receive').reduce((sum, l) => sum + (l.qty || 0), 0);
             const totalOut = filteredLogs.filter(l => l.type === 'dispatch').reduce((sum, l) => sum + (l.qty || 0), 0);
             const totalItems = filteredLogs.reduce((sum, l) => sum + (l.qty || 0), 0);
 
-            // بناء محتوى التقرير
             let content = `
                 <div style="margin-bottom:10px;font-size:14px;color:#666;">
                     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;">
@@ -2383,7 +2384,7 @@
                         <span>📦 إجمالي القطع: <strong>${totalItems}</strong></span>
                     </div>
                 </div>
-                
+
                 <div class="summary-box">
                     <div class="summary-item">
                         <div class="num" style="color:#4CAF50;">${totalIn}</div>
@@ -2398,7 +2399,7 @@
                         <div class="label">📊 صافي الحركة</div>
                     </div>
                 </div>
-                
+
                 <table>
                     <thead>
                         <tr>
@@ -2408,8 +2409,10 @@
                             <th>النوع</th>
                             <th>المنتج</th>
                             <th>الكمية</th>
+                            <th>الوحدة</th>
                             <th>المستخدم</th>
                             <th>المستلم</th>
+                            <th>السبب</th>
                             <th>المورد</th>
                             <th>رقم الفاتورة</th>
                         </tr>
@@ -2417,16 +2420,10 @@
                     <tbody>
             `;
 
-            // عرض السجلات من الأقدم إلى الأحدث
             filteredLogs.forEach((log, index) => {
-                const typeMap = { 
-                    receive: '📥 توريد', 
-                    dispatch: '📤 صرف', 
-                    manual: '✏️ إضافة' 
-                };
+                const typeMap = { receive: '📥 توريد', dispatch: '📤 صرف', manual: '✏️ إضافة' };
                 const typeClass = log.type === 'receive' ? 'receive' : log.type === 'dispatch' ? 'dispatch' : 'manual';
-                
-                // استخراج التاريخ والوقت
+
                 let datePart = log.time || '';
                 let timePart = '';
                 if (datePart.includes('،')) {
@@ -2438,7 +2435,7 @@
                     datePart = parts[0] || '';
                     timePart = parts[1] || '';
                 }
-                
+
                 content += `
                     <tr>
                         <td>${index + 1}</td>
@@ -2447,8 +2444,10 @@
                         <td class="${typeClass}">${typeMap[log.type] || log.type}</td>
                         <td><strong>${log.productName || 'غير محدد'}</strong></td>
                         <td>${log.qty || 0}</td>
+                        <td>${log.unit || ''}</td>
                         <td>${log.user || ''}</td>
                         <td>${log.recipient || ''}</td>
+                        <td style="font-size:10px;">${log.reason || ''}</td>
                         <td>${log.supplier || ''}</td>
                         <td style="font-size:11px;">${log.invoiceNumber || ''}</td>
                     </tr>
@@ -2458,7 +2457,7 @@
             content += `
                     </tbody>
                 </table>
-                
+
                 <div style="margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;font-size:12px;">
                     <div style="font-weight:bold;margin-bottom:5px;">📌 ملخص التقرير</div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px;">
@@ -2472,16 +2471,9 @@
                 </div>
             `;
 
-            // طباعة التقرير
             printWithSignature(title, content, 'logs');
-            
-            // إغلاق النافذة المنبثقة
             closeModal('print-logs-modal');
-            
-            // إظهار رسالة نجاح
             showToast(`📄 تم فتح تقرير العمليات (${filteredLogs.length} عملية) للطباعة`, '');
-            
-            // تحديث الحالة
             updateStatus(`📄 تم طباعة ${filteredLogs.length} عملية`);
         }
 
@@ -2532,10 +2524,7 @@
         }
 
         function printLogs(period) {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
             const filteredLogs = getFilteredLogs(period);
             if (filteredLogs.length === 0) { showToast('⚠️ لا توجد عمليات للطباعة', 'warning'); return; }
 
@@ -2554,14 +2543,14 @@
                     <div class="summary-item"><div class="num">${totalIn - totalOut}</div><div class="label">📊 صافي الحركة</div></div>
                 </div>
                 <table>
-                    <thead><tr><th>#</th><th>التاريخ</th><th>النوع</th><th>المنتج</th><th>الكمية</th><th>المستخدم</th><th>المستلم</th><th>المورد</th><th>رقم الفاتورة</th></tr></thead>
+                    <thead><tr><th>#</th><th>التاريخ</th><th>النوع</th><th>المنتج</th><th>الكمية</th><th>الوحدة</th><th>المستخدم</th><th>المستلم</th><th>السبب</th><th>المورد</th><th>رقم الفاتورة</th></tr></thead>
                     <tbody>
             `;
 
             filteredLogs.slice(-100).reverse().forEach((log, index) => {
                 const typeMap = { receive: '📥 توريد', dispatch: '📤 صرف', manual: '✏️ إضافة' };
                 content +=
-                    `<tr><td>${index+1}</td><td>${log.time||''}</td><td class="${log.type}">${typeMap[log.type]||log.type}</td><td>${log.productName}</td><td>${log.qty}</td><td>${log.user||''}</td><td>${log.recipient||''}</td><td>${log.supplier||''}</td><td>${log.invoiceNumber||''}</td></tr>`;
+                    `<tr><td>${index+1}</td><td>${log.time||''}</td><td class="${log.type}">${typeMap[log.type]||log.type}</td><td>${log.productName}</td><td>${log.qty}</td><td>${log.unit||''}</td><td>${log.user||''}</td><td>${log.recipient||''}</td><td>${log.reason||''}</td><td>${log.supplier||''}</td><td>${log.invoiceNumber||''}</td></tr>`;
             });
 
             content += `</tbody></table>`;
@@ -2578,6 +2567,7 @@
         //  طباعة المخزون
         // ============================================================
         function showPrintOptions() {
+            if (!hasPermission('print')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             document.getElementById('print-options').classList.remove('hidden');
         }
 
@@ -2586,10 +2576,7 @@
         }
 
         function printInventory(mode) {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
             const items = mode === 'all' ? Object.entries(inventory) : getFilteredItems(currentFilter);
             if (items.length === 0) { showToast('⚠️ لا توجد منتجات للطباعة', 'warning'); return; }
 
@@ -2602,7 +2589,7 @@
                     عدد المنتجات: ${items.length} | إجمالي القطع: ${items.reduce((sum, [_, i]) => sum + (i.qty || 0), 0)}
                 </div>
                 <table>
-                    <thead><tr><th>#</th><th>المنتج</th><th>الباركود</th><th>الكمية</th><th>أقل كمية</th><th>التصنيف</th><th>تاريخ الانتهاء</th></tr></thead>
+                    <thead><tr><th>#</th><th>المنتج</th><th>الباركود</th><th>الكمية</th><th>الوحدة</th><th>أقل كمية</th><th>سعر التكلفة</th><th>التصنيف</th><th>تاريخ الانتهاء</th></tr></thead>
                     <tbody>
             `;
 
@@ -2612,7 +2599,7 @@
                 let statusText = '';
                 if (qty === 0) statusText = '🔴 خلصت';
                 else if (qty < min) statusText = '⚠️ منخفضة';
-                content += `<tr><td>${index+1}</td><td>${item.name}</td><td>${barcode}</td><td>${qty} ${statusText}</td><td>${min}</td><td>${item.category || 'غير مصنف'}</td><td>${item.expiryDate || '---'}</td></tr>`;
+                content += `<tr><td>${index+1}</td><td>${item.name}</td><td>${barcode}</td><td>${qty} ${statusText}</td><td>${item.unit || 'حبة'}</td><td>${min}</td><td>${item.cost || 0}</td><td>${item.category || 'غير مصنف'}</td><td>${item.expiryDate || '---'}</td></tr>`;
             });
 
             content += `</tbody></table>`;
@@ -2622,10 +2609,7 @@
         }
 
         function printWarnings() {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
             const warnings = getWarnings();
             if (warnings.length === 0) { showToast('⚠️ لا توجد تحذيرات للطباعة', 'warning'); return; }
 
@@ -2657,10 +2641,7 @@
         function hideReportDateRange() { document.getElementById('report-date-range').classList.add('hidden'); }
 
         function printReport(period) {
-            if (!hasCustomPermission(currentUser, 'print')) {
-                showToast('⚠️ غير مسموح', 'warning');
-                return;
-            }
+            if (!requirePermission('print', 'طباعة')) return;
             const filteredLogs = getFilteredLogs(period);
             if (filteredLogs.length === 0) { showToast('⚠️ لا توجد بيانات للطباعة', 'warning'); return; }
 
@@ -2692,14 +2673,14 @@
 
             content += `
                 <table>
-                    <thead><tr><th>#</th><th>التاريخ</th><th>النوع</th><th>المنتج</th><th>الكمية</th><th>المستخدم</th><th>المستلم</th><th>المورد</th></tr></thead>
+                    <thead><tr><th>#</th><th>التاريخ</th><th>النوع</th><th>المنتج</th><th>الكمية</th><th>الوحدة</th><th>المستخدم</th><th>المستلم</th><th>السبب</th><th>المورد</th></tr></thead>
                     <tbody>
             `;
 
             filteredLogs.slice(-50).reverse().forEach((log, index) => {
                 const typeMap = { receive: '📥 توريد', dispatch: '📤 صرف', manual: '✏️ إضافة' };
                 content +=
-                    `<tr><td>${index+1}</td><td>${log.time||''}</td><td>${typeMap[log.type]||log.type}</td><td>${log.productName}</td><td>${log.qty}</td><td>${log.user||''}</td><td>${log.recipient||''}</td><td>${log.supplier||''}</td></tr>`;
+                    `<tr><td>${index+1}</td><td>${log.time||''}</td><td>${typeMap[log.type]||log.type}</td><td>${log.productName}</td><td>${log.qty}</td><td>${log.unit||''}</td><td>${log.user||''}</td><td>${log.recipient||''}</td><td>${log.reason||''}</td><td>${log.supplier||''}</td></tr>`;
             });
 
             content += `</tbody></table>`;
@@ -2718,15 +2699,22 @@
                 existing.qty += qty;
             } else {
                 const recipient = document.getElementById('scan-recipient')?.value?.trim() || '';
+                const reason = document.getElementById('scan-reason')?.value || '';
+                const unit = document.getElementById('scan-unit')?.value || product.unit || 'حبة';
+                const cost = parseFloat(document.getElementById('scan-cost')?.value) || product.cost || 0;
+
                 operationCart.push({
                     barcode: barcode,
                     name: product.name,
                     qty: qty,
                     category: product.category || 'غير مصنف',
                     min: product.min || 5,
+                    unit: unit,
+                    cost: cost,
                     expiryDate: product.expiryDate || null,
                     tags: product.tags || [],
-                    recipient: recipient
+                    recipient: recipient,
+                    reason: reason
                 });
             }
             updateCartUI();
@@ -2775,7 +2763,7 @@
             }
 
             container.innerHTML = operationCart.map(item =>
-                `<div class="cart-item"><div><span style="font-weight:bold;">${item.name}</span><span style="color:var(--text-secondary);font-size:10px;">×${item.qty}</span>${item.recipient?' 📝'+item.recipient:''}</div><div style="display:flex;gap:3px;align-items:center;"><button onclick="removeFromCart('${item.barcode}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">✕</button></div></div>`
+                `<div class="cart-item"><div><span style="font-weight:bold;">${item.name}</span><span style="color:var(--text-secondary);font-size:10px;">×${item.qty}</span>${item.unit?' '+item.unit:''}${item.recipient?' 📝'+item.recipient:''}${item.reason?' 📌'+item.reason:''}</div><div style="display:flex;gap:3px;align-items:center;"><button onclick="removeFromCart('${item.barcode}')" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:11px;">✕</button></div></div>`
             ).join('');
         }
 
@@ -2786,49 +2774,83 @@
                 phone: document.getElementById('scan-invoice-phone')?.value || '',
                 note: document.getElementById('scan-invoice-note')?.value || '',
                 expiryDate: document.getElementById('scan-expiry-date')?.value || '',
-                expiryWarning: parseInt(document.getElementById('scan-expiry-warning')?.value) || 7
+                expiryWarning: parseInt(document.getElementById('scan-expiry-warning')?.value) || 7,
+                unit: document.getElementById('scan-unit')?.value || 'حبة',
+                cost: parseFloat(document.getElementById('scan-cost')?.value) || 0,
+                recipient: document.getElementById('scan-recipient')?.value || '',
+                reason: document.getElementById('scan-reason')?.value || ''
             };
         }
 
         function confirmCart() {
             if (operationCart.length === 0) { showToast('⚠️ السلة فارغة', 'warning'); return; }
-            if (cartMode === 'receive' && !hasCustomPermission(currentUser, 'receive')) { showToast('⚠️ غير مسموح بالتوريد',
+            if (cartMode === 'receive' && !hasPermission('receive')) { showToast('⚠️ غير مسموح بالتوريد',
                     'warning'); return; }
-            if (cartMode === 'dispatch' && !hasCustomPermission(currentUser, 'dispatch')) { showToast('⚠️ غير مسموح بالصرف',
+            if (cartMode === 'dispatch' && !hasPermission('dispatch')) { showToast('⚠️ غير مسموح بالصرف',
                     'warning'); return; }
 
             const invoice = getInvoiceData();
-            const user = users[currentUser]?.name || currentUser;
+            const user = getCurrentUserName();
             let successCount = 0,
                 errorCount = 0,
                 errorMessages = [],
                 totalItems = 0;
 
-            operationCart.forEach(item => {
+            // التحقق من الصلاحية للتوريد/الصرف
+            if (cartMode === 'dispatch') {
+                // التحقق من كفاية الكمية قبل تنفيذ أي عملية
+                for (const item of operationCart) {
+                    const product = inventory[item.barcode];
+                    if (!product) {
+                        errorCount++;
+                        errorMessages.push(`❌ ${item.name} غير موجود`);
+                        continue;
+                    }
+                    if ((product.qty || 0) < item.qty) {
+                        errorCount++;
+                        errorMessages.push(`❌ ${item.name}: الكمية غير كافية (المتوفرة: ${product.qty})`);
+                    }
+                }
+                if (errorCount > 0) {
+                    showToast(`⚠️ ${errorCount} منتج غير كافٍ: ${errorMessages.join(', ')}`, 'warning');
+                    return;
+                }
+            }
+
+            // تنفيذ العمليات
+            for (const item of operationCart) {
                 const product = inventory[item.barcode];
-                if (!product) { errorCount++;
-                    errorMessages.push(`❌ ${item.name} غير موجود`); return; }
+                if (!product) {
+                    errorCount++;
+                    errorMessages.push(`❌ ${item.name} غير موجود`);
+                    continue;
+                }
 
                 if (cartMode === 'receive') {
                     product.qty = (product.qty || 0) + item.qty;
-                    if (invoice.expiryDate) { product.expiryDate = invoice.expiryDate;
-                        product.expiryWarning = invoice.expiryWarning; }
+                    product.unit = item.unit || product.unit || 'حبة';
+                    product.cost = item.cost || product.cost || 0;
+                    if (invoice.expiryDate) {
+                        product.expiryDate = invoice.expiryDate;
+                        product.expiryWarning = invoice.expiryWarning;
+                    }
+                    if (invoice.supplier) { product.lastSupplier = invoice.supplier; }
                     if (item.tags && item.tags.length > 0) {
                         if (!product.tags) product.tags = [];
                         item.tags.forEach(t => { if (!product.tags.includes(t)) product.tags.push(t); });
                     }
-                    addLog('receive', product.name, item.qty, invoice, user, item.recipient || '');
+                    addLog('receive', product.name, item.qty, invoice, user, item.recipient || '', item.unit, item.cost, item
+                        .reason || '');
                     successCount++;
                     totalItems += item.qty;
                 } else if (cartMode === 'dispatch') {
-                    if ((product.qty || 0) < item.qty) { errorCount++;
-                        errorMessages.push(`❌ ${product.name}: الكمية غير كافية (المتوفرة: ${product.qty})`); return; }
                     product.qty -= item.qty;
-                    addLog('dispatch', product.name, item.qty, invoice, user, item.recipient || '');
+                    addLog('dispatch', product.name, item.qty, invoice, user, item.recipient || '', item.unit || product
+                        .unit || 'حبة', product.cost || 0, item.reason || '');
                     successCount++;
                     totalItems += item.qty;
                 }
-            });
+            }
 
             saveData();
             updateUI();
@@ -2848,6 +2870,8 @@
             document.getElementById('scan-expiry-date').value = '';
             document.getElementById('scan-recipient').value = '';
             document.getElementById('scan-invoice-section').classList.add('hidden');
+            document.getElementById('recipient-field').classList.add('hidden');
+            document.getElementById('reason-field').classList.add('hidden');
 
             operationCart = [];
             updateCartUI();
@@ -2923,7 +2947,7 @@
         //  المسح
         // ============================================================
         function startScanner() {
-            if (!hasCustomPermission(currentUser, 'scan')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('scan')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             if (isScannerRunning) return;
 
             const container = document.getElementById('scanner-container');
@@ -2988,7 +3012,7 @@
         }
 
         function startScannerFromTab(tab) {
-            if (!hasCustomPermission(currentUser, 'scan')) {
+            if (!hasPermission('scan')) {
                 showToast('⚠️ غير مسموح', 'warning');
                 return;
             }
@@ -3003,12 +3027,18 @@
                 document.getElementById('op-receive').click();
                 updateStatus('📸 جاري المسح للتوريد');
                 document.getElementById('result').innerHTML = '<div class="result-text info">🔍 وجه الكاميرا نحو الباركود للتوريد</div>';
+                document.getElementById('recipient-field').classList.add('hidden');
+                document.getElementById('reason-field').classList.add('hidden');
+                document.getElementById('scan-invoice-section').classList.remove('hidden');
             } else if (tab === 'dispatch') {
                 currentOperation = 'dispatch';
                 cartMode = 'dispatch';
                 document.getElementById('op-dispatch').click();
                 updateStatus('📸 جاري المسح للصرف');
                 document.getElementById('result').innerHTML = '<div class="result-text info">🔍 وجه الكاميرا نحو الباركود للصرف</div>';
+                document.getElementById('recipient-field').classList.remove('hidden');
+                document.getElementById('reason-field').classList.remove('hidden');
+                document.getElementById('scan-invoice-section').classList.add('hidden');
             } else if (tab === 'search') {
                 startSearchScanner();
                 return;
@@ -3031,7 +3061,7 @@
         }
 
         function setOperation(op) {
-            if (!hasCustomPermission(currentUser, op)) { showToast(`⚠️ غير مسموح`, 'warning'); return; }
+            if (!hasPermission(op)) { showToast(`⚠️ غير مسموح`, 'warning'); return; }
             currentOperation = op;
             cartMode = op;
 
@@ -3040,27 +3070,19 @@
                 document.getElementById('op-receive').classList.add('active-tab');
                 document.getElementById('op-receive').style.background = 'var(--success)';
                 document.getElementById('op-dispatch').style.background = '#555';
+                document.getElementById('recipient-field').classList.add('hidden');
+                document.getElementById('reason-field').classList.add('hidden');
+                document.getElementById('scan-invoice-section').classList.remove('hidden');
             } else {
                 document.getElementById('op-dispatch').classList.add('active-tab');
                 document.getElementById('op-dispatch').style.background = 'var(--accent)';
                 document.getElementById('op-receive').style.background = '#555';
+                document.getElementById('recipient-field').classList.remove('hidden');
+                document.getElementById('reason-field').classList.remove('hidden');
+                document.getElementById('scan-invoice-section').classList.add('hidden');
             }
 
             updateStatus(`📌 وضع ${op === 'receive' ? 'توريد' : 'صرف'}`);
-
-            const recipientField = document.getElementById('recipient-field');
-            if (op === 'dispatch') {
-                recipientField.classList.remove('hidden');
-            } else {
-                recipientField.classList.add('hidden');
-                document.getElementById('scan-recipient').value = '';
-            }
-
-            if (op === 'receive') {
-                document.getElementById('scan-invoice-section').classList.remove('hidden');
-            } else {
-                document.getElementById('scan-invoice-section').classList.add('hidden');
-            }
 
             document.getElementById('expiry-fields').classList.add('hidden');
             document.querySelector('#expiry-toggle button').textContent = '📅 إظهار تاريخ الانتهاء (اختياري)';
@@ -3098,8 +3120,12 @@
                 document.getElementById('scan-product-barcode').textContent = barcode;
                 document.getElementById('scan-product-current-qty').textContent = product.qty || 0;
                 document.getElementById('scan-product-min').textContent = product.min || 5;
+                document.getElementById('scan-product-unit').textContent = product.unit || 'حبة';
+                document.getElementById('scan-product-cost').textContent = product.cost || 0;
                 document.getElementById('scan-qty-input').value = 1;
                 document.getElementById('scan-min-qty').value = product.min || 5;
+                document.getElementById('scan-unit').value = product.unit || 'حبة';
+                document.getElementById('scan-cost').value = product.cost || 0;
                 document.getElementById('scan-tags-input').value = (product.tags || []).join(', ');
                 const tagsContainer = document.getElementById('scan-product-tags');
                 if (product.tags && product.tags.length > 0) {
@@ -3131,15 +3157,25 @@
                 }
                 updateOperationTabs();
             } else {
-                if (!hasCustomPermission(currentUser, 'add')) {
+                if (!hasPermission('add')) {
                     setResult('⚠️ غير مسموح بإضافة منتج جديد', 'error');
                     showToast('⚠️ غير مسموح بإضافة منتج جديد', 'warning');
                     return;
                 }
                 const name = prompt(`🆕 منتج جديد\nالباركود: ${barcode}\nأدخل اسم القطعة:`);
                 if (name && name.trim()) {
+                    const unit = prompt('📏 وحدة القياس (مثل: حبة، كرتون، كجم):', 'حبة') || 'حبة';
+                    const cost = parseFloat(prompt('💰 سعر التكلفة:', '0')) || 0;
                     const newBarcode = barcode;
-                    inventory[newBarcode] = { name: name.trim(), qty: 0, min: 5, category: 'غير مصنف', tags: [] };
+                    inventory[newBarcode] = {
+                        name: name.trim(),
+                        qty: 0,
+                        min: 5,
+                        unit: unit,
+                        cost: cost,
+                        category: 'غير مصنف',
+                        tags: []
+                    };
                     saveData();
                     updateUI();
                     handleScanned(newBarcode);
@@ -3165,11 +3201,14 @@
             const qty = parseInt(document.getElementById('scan-qty-input').value) || 1;
             const minQty = parseInt(document.getElementById('scan-min-qty').value) || 5;
             const tagsInput = document.getElementById('scan-tags-input').value.trim();
-            const recipient = document.getElementById('scan-recipient')?.value?.trim() || '';
+            const unit = document.getElementById('scan-unit').value.trim() || 'حبة';
+            const cost = parseFloat(document.getElementById('scan-cost').value) || 0;
 
             if (qty <= 0) { showToast('❌ الكمية يجب أن تكون أكبر من صفر', 'error'); return; }
 
             product.min = minQty;
+            product.unit = unit;
+            product.cost = cost;
 
             if (tagsInput) {
                 const newTags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
@@ -3179,7 +3218,6 @@
                 }
             }
 
-            const user = users[currentUser]?.name || currentUser;
             addToCart(scanProductBarcode, product, currentOperation, qty);
 
             const invoice = getInvoiceData();
@@ -3234,14 +3272,14 @@
         }
 
         function quickReceive(barcode) {
-            if (!hasCustomPermission(currentUser, 'receive')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('receive')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const product = inventory[barcode];
             if (!product) return;
             const qty = parseInt(prompt(`📥 توريد "${product.name}"\nالكمية الحالية: ${product.qty}\nأدخل الكمية:`, '1'));
             if (qty === null || isNaN(qty) || qty <= 0) return;
-            const user = users[currentUser]?.name || currentUser;
+            const user = getCurrentUserName();
             product.qty = (product.qty || 0) + qty;
-            addLog('receive', product.name, qty, {}, user);
+            addLog('receive', product.name, qty, {}, user, '', product.unit || 'حبة', product.cost || 0);
             saveData();
             updateUI();
             updateOperationTabs();
@@ -3250,7 +3288,7 @@
         }
 
         function quickDispatch(barcode) {
-            if (!hasCustomPermission(currentUser, 'dispatch')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('dispatch')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const product = inventory[barcode];
             if (!product) return;
             const qty = parseInt(prompt(`📤 صرف "${product.name}"\nالمتوفرة: ${product.qty}\nأدخل الكمية:`, '1'));
@@ -3259,10 +3297,11 @@
                 showToast(`❌ الكمية غير كافية! المتوفرة: ${product.qty}`, 'error');
                 return;
             }
-            const recipient = prompt('📝 اسم المستلم (اختياري):') || '';
-            const user = users[currentUser]?.name || currentUser;
+            const recipient = prompt('📝 اسم المستلم / الجهة (اختياري):') || '';
+            const reason = prompt('📝 سبب الصرف:', 'استخدام داخلي') || 'استخدام داخلي';
+            const user = getCurrentUserName();
             product.qty -= qty;
-            addLog('dispatch', product.name, qty, {}, user, recipient);
+            addLog('dispatch', product.name, qty, {}, user, recipient, product.unit || 'حبة', product.cost || 0, reason);
             saveData();
             updateUI();
             updateOperationTabs();
@@ -3271,11 +3310,11 @@
         }
 
         // ============================================================
-        //  التوريد اليدوي - مع البحث عن منتج موجود أو إضافة جديد
+        //  التوريد اليدوي
         // ============================================================
         function openManualReceive() {
-            if (!hasCustomPermission(currentUser, 'receive')) { showToast('⚠️ غير مسموح', 'warning'); return; }
-            if (!hasCustomPermission(currentUser, 'manual')) { showToast('⚠️ غير مسموح بالعمليات اليدوية', 'warning'); return; }
+            if (!hasPermission('receive')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('manual')) { showToast('⚠️ غير مسموح بالعمليات اليدوية', 'warning'); return; }
 
             manualSelectedBarcode = null;
             document.getElementById('manual-selected-product').style.display = 'none';
@@ -3283,10 +3322,11 @@
             document.getElementById('manual-product-list').innerHTML =
                 '<div style="color:var(--text-secondary);text-align:center;padding:10px;font-size:12px;">📦 ابدأ بالبحث عن منتج أو قم بإضافة جديد</div>';
 
-            // تعيين القيم الافتراضية
             document.getElementById('manual-new-name').value = '';
             document.getElementById('manual-new-qty').value = '1';
             document.getElementById('manual-new-category').value = 'مستودع رئيسي';
+            document.getElementById('manual-new-unit').value = 'حبة';
+            document.getElementById('manual-new-cost').value = '0';
             document.getElementById('manual-new-min').value = '5';
             document.getElementById('manual-new-expiry').value = '';
 
@@ -3316,7 +3356,7 @@
             list.innerHTML = items.map(([barcode, item]) =>
                 `<div class="manual-product-item" onclick="selectManualProduct('${barcode}')">
                     <span>${item.name}</span>
-                    <span class="qty-info">📦 ${item.qty || 0} قطعة ${item.category ? '• ' + item.category : ''}</span>
+                    <span class="qty-info">📦 ${item.qty || 0} ${item.unit || 'حبة'} ${item.category ? '• ' + item.category : ''}</span>
                 </div>`
             ).join('');
         }
@@ -3329,10 +3369,9 @@
             document.getElementById('manual-selected-product').style.display = 'block';
             document.getElementById('manual-selected-name').textContent = item.name;
             document.getElementById('manual-selected-barcode').textContent = `(${barcode})`;
-            document.getElementById('manual-selected-qty').textContent = item.qty || 0;
+            document.getElementById('manual-selected-qty').textContent = `${item.qty || 0} ${item.unit || 'حبة'}`;
             document.getElementById('manual-qty-input').value = 1;
 
-            // إخفاء نتائج البحث
             document.getElementById('manual-product-list').innerHTML =
                 `<div style="color:var(--success);text-align:center;padding:6px;font-size:12px;">✅ تم اختيار: ${item.name}</div>`;
         }
@@ -3345,16 +3384,19 @@
         }
 
         function addManualNewProduct() {
+            if (!hasPermission('add')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+
             const name = document.getElementById('manual-new-name').value.trim();
             const qty = parseInt(document.getElementById('manual-new-qty').value) || 1;
             const category = document.getElementById('manual-new-category').value.trim() || 'مستودع رئيسي';
+            const unit = document.getElementById('manual-new-unit').value.trim() || 'حبة';
+            const cost = parseFloat(document.getElementById('manual-new-cost').value) || 0;
             const min = parseInt(document.getElementById('manual-new-min').value) || 5;
             const expiry = document.getElementById('manual-new-expiry').value;
 
             if (!name) { showToast('❌ يرجى إدخال اسم المنتج', 'error'); return; }
             if (qty <= 0) { showToast('❌ الكمية يجب أن تكون أكبر من صفر', 'error'); return; }
 
-            // التحقق من عدم وجود نفس الاسم
             const existing = Object.entries(inventory).find(([_, item]) => item.name === name);
             if (existing) {
                 showToast(`⚠️ يوجد منتج بنفس الاسم: ${existing[1].name}`, 'warning');
@@ -3366,15 +3408,14 @@
                 name: name,
                 qty: 0,
                 min: min,
+                unit: unit,
+                cost: cost,
                 category: category,
                 tags: [],
                 expiryDate: expiry || null
             };
 
             const product = inventory[barcode];
-            const user = users[currentUser]?.name || currentUser;
-
-            // إضافة مباشرة للسلة
             addToCart(barcode, product, 'receive', qty);
 
             saveData();
@@ -3399,7 +3440,6 @@
             const qty = parseInt(document.getElementById('manual-qty-input').value) || 1;
             if (qty <= 0) { showToast('❌ الكمية غير صالحة', 'error'); return; }
 
-            const user = users[currentUser]?.name || currentUser;
             addToCart(manualSelectedBarcode, product, 'receive', qty);
 
             showToast(`📥 تم توريد ${qty} من ${product.name} للسلة`, '');
@@ -3410,11 +3450,11 @@
         }
 
         // ============================================================
-        //  الصرف اليدوي - مع البحث عن منتج موجود
+        //  الصرف اليدوي
         // ============================================================
         function openManualDispatch() {
-            if (!hasCustomPermission(currentUser, 'dispatch')) { showToast('⚠️ غير مسموح', 'warning'); return; }
-            if (!hasCustomPermission(currentUser, 'manual')) { showToast('⚠️ غير مسموح بالعمليات اليدوية', 'warning'); return; }
+            if (!hasPermission('dispatch')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('manual')) { showToast('⚠️ غير مسموح بالعمليات اليدوية', 'warning'); return; }
 
             manualDispatchBarcode = null;
             document.getElementById('manual-dispatch-selected').style.display = 'none';
@@ -3422,6 +3462,7 @@
             document.getElementById('manual-dispatch-list').innerHTML =
                 '<div style="color:var(--text-secondary);text-align:center;padding:10px;font-size:12px;">📦 ابدأ بالبحث عن منتج للصرف</div>';
             document.getElementById('manual-dispatch-recipient').value = '';
+            document.getElementById('manual-dispatch-reason').value = 'استخدام داخلي';
 
             document.getElementById('manual-dispatch-modal').classList.add('active');
         }
@@ -3449,7 +3490,7 @@
             list.innerHTML = items.map(([barcode, item]) =>
                 `<div class="manual-product-item" onclick="selectManualDispatchProduct('${barcode}')">
                     <span>${item.name}</span>
-                    <span class="qty-info">📦 ${item.qty || 0} قطعة ${item.category ? '• ' + item.category : ''}</span>
+                    <span class="qty-info">📦 ${item.qty || 0} ${item.unit || 'حبة'} ${item.category ? '• ' + item.category : ''}</span>
                 </div>`
             ).join('');
         }
@@ -3467,7 +3508,7 @@
             document.getElementById('manual-dispatch-selected').style.display = 'block';
             document.getElementById('manual-dispatch-name').textContent = item.name;
             document.getElementById('manual-dispatch-barcode').textContent = `(${barcode})`;
-            document.getElementById('manual-dispatch-qty').textContent = item.qty || 0;
+            document.getElementById('manual-dispatch-qty').textContent = `${item.qty || 0} ${item.unit || 'حبة'}`;
             document.getElementById('manual-dispatch-qty-input').value = 1;
 
             document.getElementById('manual-dispatch-list').innerHTML =
@@ -3498,11 +3539,14 @@
             }
 
             const recipient = document.getElementById('manual-dispatch-recipient').value.trim() || '';
-            const user = users[currentUser]?.name || currentUser;
+            const reason = document.getElementById('manual-dispatch-reason').value || 'استخدام داخلي';
 
             addToCart(manualDispatchBarcode, product, 'dispatch', qty);
             if (recipient) {
                 operationCart[operationCart.length - 1].recipient = recipient;
+            }
+            if (reason) {
+                operationCart[operationCart.length - 1].reason = reason;
             }
 
             showToast(`📤 تم صرف ${qty} من ${product.name} للسلة`, '');
@@ -3517,6 +3561,7 @@
         // ============================================================
         function startSearchScanner() {
             if (searchScannerActive) { showToast('⏳ جاري المسح...', 'warning'); return; }
+            if (!hasPermission('scan')) { showToast('⚠️ غير مسموح', 'warning'); return; }
 
             const overlay = document.getElementById('loading-overlay');
             overlay.style.display = 'flex';
@@ -3614,7 +3659,7 @@
 
             results.innerHTML = items.map(([barcode, item]) =>
                 `<div class="inventory-item" onclick="showProductDetails('${barcode}')">
-                    <div><div class="name">${item.name}</div><div class="meta">${barcode} • ${item.category||'غير مصنف'}</div>${item.tags&&item.tags.length>0?`<div class="tags">${item.tags.map(t=>`<span class="tag-badge">${t}</span>`).join('')}</div>`:''}</div>
+                    <div><div class="name">${item.name}</div><div class="meta">${barcode} • ${item.category||'غير مصنف'} • ${item.unit||'حبة'}</div>${item.tags&&item.tags.length>0?`<div class="tags">${item.tags.map(t=>`<span class="tag-badge">${t}</span>`).join('')}</div>`:''}</div>
                     <div style="display:flex;align-items:center;gap:4px;"><div class="qty ${(item.qty||0)<(item.min||5)?'low':''}">${item.qty||0}</div></div>
                 </div>`
             ).join('');
@@ -3627,13 +3672,13 @@
             if (!item) return;
             const details = document.getElementById('search-details');
 
-            const lastLogs = logs.filter(l => l.productName === item.name && l.type === 'receive').slice(-3);
+            const lastLogs = logs.filter(l => l.productName === item.name).slice(-5);
             let historyHtml = '';
             if (lastLogs.length > 0) {
                 historyHtml = lastLogs.map(l =>
                     `<div style="font-size:10px;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border);">
-                        📄 ${l.invoiceNumber||'بدون فاتورة'} • 🏢 ${l.supplier||'غير محدد'} • ${l.qty} قطعة • ${l.time||''}
-                        ${l.user?' 👤'+l.user:''}${l.recipient?' 📝'+l.recipient:''}
+                        ${l.type === 'receive' ? '📥' : '📤'} ${l.qty} ${l.unit||''} • ${l.time||''}
+                        ${l.user?' 👤'+l.user:''}${l.recipient?' 📝'+l.recipient:''}${l.reason?' 📌'+l.reason:''}
                     </div>`
                 ).join('');
             } else {
@@ -3651,6 +3696,8 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px;">
                     <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">الاسم</div><div style="font-size:13px;font-weight:bold;">${item.name}</div></div>
                     <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">الكمية</div><div style="font-size:13px;font-weight:bold;color:${(item.qty||0)<(item.min||5)?'var(--accent)':'var(--success)'}">${item.qty||0}</div></div>
+                    <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">الوحدة</div><div style="font-size:12px;">${item.unit||'حبة'}</div></div>
+                    <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">سعر التكلفة</div><div style="font-size:12px;">${item.cost||0}</div></div>
                     <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">أقل كمية</div><div style="font-size:13px;font-weight:bold;">${item.min||5}</div></div>
                     <div style="background:var(--bg-primary);padding:6px;border-radius:6px;text-align:center;"><div style="font-size:9px;color:var(--text-secondary);">التصنيف</div><div style="font-size:12px;">${item.category||'غير مصنف'}</div></div>
                 </div>
@@ -3660,7 +3707,7 @@
                     ${item.lastSupplier?`<div style="font-size:10px;color:var(--text-secondary);">🏢 آخر مورد: ${item.lastSupplier}</div>`:''}
                 </div>
                 <div style="background:var(--bg-primary);padding:6px;border-radius:6px;">
-                    <div style="font-size:10px;color:var(--text-secondary);margin-bottom:3px;">📜 آخر التوريدات</div>
+                    <div style="font-size:10px;color:var(--text-secondary);margin-bottom:3px;">📜 آخر العمليات</div>
                     ${historyHtml}
                 </div>
                 <div style="margin-top:4px;display:flex;gap:4px;">
@@ -3677,7 +3724,7 @@
             const item = inventory[barcode];
             if (!item) return;
             const data =
-                `المنتج: ${item.name}\nالباركود: ${barcode}\nالكمية: ${item.qty||0}\nأقل كمية: ${item.min||5}\nالتصنيف: ${item.category||'غير مصنف'}\nالعلامات: ${(item.tags||[]).join(', ')}\nتاريخ الانتهاء: ${item.expiryDate||'لا يوجد'}`;
+                `المنتج: ${item.name}\nالباركود: ${barcode}\nالكمية: ${item.qty||0}\nالوحدة: ${item.unit||'حبة'}\nسعر التكلفة: ${item.cost||0}\nأقل كمية: ${item.min||5}\nالتصنيف: ${item.category||'غير مصنف'}\nالعلامات: ${(item.tags||[]).join(', ')}\nتاريخ الانتهاء: ${item.expiryDate||'لا يوجد'}`;
             navigator.clipboard.writeText(data).then(() => { showToast('📋 تم نسخ جميع البيانات', ''); }).catch(() => {
                 const textarea = document.createElement('textarea');
                 textarea.value = data;
@@ -3693,6 +3740,7 @@
         //  إضافة علامة
         // ============================================================
         function addTagToProduct(barcode) {
+            if (!hasPermission('edit')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const item = inventory[barcode];
             if (!item) return;
             const tag = prompt('🏷️ أدخل العلامة (مثال: عالي الطلب, موسمي, جديد):');
@@ -3711,7 +3759,7 @@
         }
 
         // ============================================================
-        //  التحليل
+        //  التحليل والتقارير
         // ============================================================
         function showTopProducts() {
             const container = document.getElementById('analysis-result');
@@ -3745,6 +3793,58 @@
                 `<div style="font-weight:bold;color:var(--accent);">📤 الأكثر صرفاً</div>${sorted.map(([name,qty],i)=>`<div class="report-item"><span>${i+1}. ${name}</span><span class="report-value">${qty} قطعة</span></div>`).join('')}`;
         }
 
+        function showLowStockReport() {
+            const container = document.getElementById('analysis-result');
+            const lowItems = Object.entries(inventory).filter(([_, item]) => {
+                const qty = item.qty || 0;
+                const min = item.min || 5;
+                return qty < min;
+            });
+
+            if (lowItems.length === 0) {
+                container.innerHTML = '<div style="color:var(--success);">✅ لا توجد منتجات منخفضة المخزون</div>';
+                return;
+            }
+
+            container.innerHTML =
+                `<div style="font-weight:bold;color:var(--warning);">⚠️ المنتجات منخفضة المخزون (${lowItems.length})</div>${lowItems.map(([barcode,item])=>`<div class="report-item"><span>${item.name}</span><span class="report-value low">${item.qty || 0} / ${item.min || 5} ${item.unit || 'حبة'}</span></div>`).join('')}`;
+        }
+
+        function showProductMovementReport() {
+            const container = document.getElementById('analysis-result');
+            const productName = prompt('📊 أدخل اسم المنتج لعرض حركته:');
+            if (!productName || !productName.trim()) return;
+
+            const productLogs = logs.filter(l => l.productName && l.productName.toLowerCase().includes(productName.trim()
+                .toLowerCase()));
+
+            if (productLogs.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-secondary);">📭 لا توجد حركة للمنتج "${productName}"</div>`;
+                return;
+            }
+
+            const totalIn = productLogs.filter(l => l.type === 'receive').reduce((sum, l) => sum + l.qty, 0);
+            const totalOut = productLogs.filter(l => l.type === 'dispatch').reduce((sum, l) => sum + l.qty, 0);
+
+            container.innerHTML = `
+                <div style="font-weight:bold;color:var(--info);">📊 حركة المنتج: ${productName}</div>
+                <div class="summary-box" style="margin:4px 0;padding:6px;">
+                    <div class="summary-item"><div class="num" style="color:var(--success);">${totalIn}</div><div class="label">📥 إجمالي التوريدات</div></div>
+                    <div class="summary-item"><div class="num" style="color:var(--accent);">${totalOut}</div><div class="label">📤 إجمالي الصرفيات</div></div>
+                    <div class="summary-item"><div class="num" style="color:${totalIn - totalOut >= 0 ? 'var(--success)' : 'var(--accent)'};">${totalIn - totalOut}</div><div class="label">📊 صافي الحركة</div></div>
+                    <div class="summary-item"><div class="num">${productLogs.length}</div><div class="label">📜 عدد العمليات</div></div>
+                </div>
+                <div style="max-height:150px;overflow-y:auto;margin-top:4px;">
+                    ${productLogs.slice(-10).reverse().map(l => `
+                        <div style="font-size:10px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
+                            <span>${l.type === 'receive' ? '📥' : '📤'} ${l.qty} ${l.unit||''}</span>
+                            <span style="color:var(--text-secondary);font-size:8px;">${l.time||''}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
         // ============================================================
         //  تحديث الواجهة
         // ============================================================
@@ -3758,7 +3858,6 @@
             updateSupplierSelects();
             updateWarningsBadge();
             updateOperationTabs();
-            updateBackupBadge();
             const searchSelect = document.getElementById('search-supplier');
             if (searchSelect) {
                 const currentVal = searchSelect.value;
@@ -3813,13 +3912,13 @@
                 else if (isLow) statusClass = 'low';
 
                 return `<div class="inventory-item ${statusClass}">
-                    <div><div class="name">${item.name}</div><div class="meta">${barcode} • ${item.category||'غير مصنف'}</div>${item.tags&&item.tags.length>0?`<div class="tags">${item.tags.map(t=>`<span class="tag-badge">${t}</span>`).join('')}</div>`:''}</div>
+                    <div><div class="name">${item.name}</div><div class="meta">${barcode} • ${item.category||'غير مصنف'} • ${item.unit||'حبة'}</div>${item.tags&&item.tags.length>0?`<div class="tags">${item.tags.map(t=>`<span class="tag-badge">${t}</span>`).join('')}</div>`:''}</div>
                     <div style="display:flex;align-items:center;gap:4px;">
                         <div class="qty ${isLow||isZero?'low':''}">${qty}${isZero?' 🔴':''}${isExpired?' 📅':''}</div>
                         <div class="actions">
                             <button class="copy-btn" onclick="copyProductData('${barcode}')" title="نسخ البيانات">📋</button>
-                            ${hasCustomPermission(currentUser, 'edit')?`<button class="edit-btn" onclick="editProduct('${barcode}')" title="تعديل">✏️</button>`:''}
-                            ${hasCustomPermission(currentUser, 'delete')?`<button class="delete-btn" onclick="deleteProduct('${barcode}')" title="حذف">🗑️</button>`:''}
+                            ${hasPermission('edit')?`<button class="edit-btn" onclick="editProduct('${barcode}')" title="تعديل">✏️</button>`:''}
+                            ${hasPermission('delete')?`<button class="delete-btn" onclick="deleteProduct('${barcode}')" title="حذف">🗑️</button>`:''}
                             <button class="tag-btn" onclick="addTagToProduct('${barcode}')" title="إضافة علامة">🏷️</button>
                         </div>
                     </div>
@@ -3839,9 +3938,10 @@
                 `<div class="log-item">
                     <span>
                         <span class="log-type ${log.type}">${log.type === 'receive' ? '📥' : log.type === 'dispatch' ? '📤' : '✏️'}</span>
-                        ${log.productName} × ${log.qty}
+                        ${log.productName} × ${log.qty} ${log.unit||''}
                         ${log.user?' 👤'+log.user:''}
                         ${log.recipient?' 📝'+log.recipient:''}
+                        ${log.reason?' 📌'+log.reason:''}
                         ${log.supplier?' 🏢'+log.supplier:''}
                         ${log.invoiceNumber?' #'+log.invoiceNumber:''}
                     </span>
@@ -3854,6 +3954,7 @@
             const container = document.getElementById('reports-container');
             const items = Object.entries(inventory);
             const total = items.reduce((sum, [_, i]) => sum + (i.qty || 0), 0);
+            const totalCost = items.reduce((sum, [_, i]) => sum + ((i.qty || 0) * (i.cost || 0)), 0);
             const low = items.filter(([_, i]) => {
                 const qty = i.qty || 0;
                 const min = i.min || 5;
@@ -3873,10 +3974,11 @@
             container.innerHTML = `
                 <div class="report-item"><span class="report-label">📦 المنتجات</span><span class="report-value">${items.length}</span></div>
                 <div class="report-item"><span class="report-label">📊 إجمالي القطع</span><span class="report-value">${total}</span></div>
+                <div class="report-item"><span class="report-label">💰 إجمالي قيمة المخزون</span><span class="report-value">${totalCost.toFixed(2)}</span></div>
                 <div class="report-item"><span class="report-label">⚠️ منخفضة</span><span class="report-value ${low.length>0?'low':'ok'}">${low.length}</span></div>
                 <div class="report-item"><span class="report-label">📭 خلصت</span><span class="report-value ${zero.length>0?'low':'ok'}">${zero.length}</span></div>
                 <div class="report-item"><span class="report-label">📅 منتهية</span><span class="report-value ${expired.length>0?'low':'ok'}">${expired.length}</span></div>
-                ${low.slice(0,3).map(([barcode,item])=>`<div class="report-item" style="font-size:10px;padding-right:8px;"><span>${item.name}</span><span class="report-value low">${item.qty} / ${item.min}</span></div>`).join('')}
+                ${low.slice(0,3).map(([barcode,item])=>`<div class="report-item" style="font-size:10px;padding-right:8px;"><span>${item.name}</span><span class="report-value low">${item.qty} / ${item.min} ${item.unit||'حبة'}</span></div>`).join('')}
                 <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
                     <div style="color:var(--text-secondary);font-size:10px;">📂 التصنيفات</div>
                     ${Object.entries(categories).slice(0,5).map(([cat,qty])=>`<div class="report-item" style="font-size:10px;"><span>${cat}</span><span class="report-value">${qty}</span></div>`).join('')}
@@ -3937,35 +4039,40 @@
         //  إدارة المنتجات
         // ============================================================
         function editProduct(barcode) {
-            if (!hasCustomPermission(currentUser, 'edit')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('edit')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const item = inventory[barcode];
             if (!item) return;
+
             const newName = prompt('✏️ تعديل اسم المنتج:', item.name);
-            if (newName && newName.trim()) {
-                item.name = newName.trim();
-                const newCategory = prompt('🏷️ تعديل التصنيف:', item.category || 'غير مصنف');
-                if (newCategory) item.category = newCategory.trim();
-                const newMin = prompt('⚠️ تعديل أقل كمية:', item.min || 5);
-                if (newMin && !isNaN(newMin) && parseInt(newMin) >= 0) item.min = parseInt(newMin);
-                const newExpiry = prompt('📅 تاريخ الانتهاء (YYYY-MM-DD) أو اترك فارغاً:', item.expiryDate || '');
-                if (newExpiry && newExpiry.trim()) {
-                    item.expiryDate = newExpiry.trim();
-                } else if (newExpiry === '') {
-                    delete item.expiryDate;
-                }
-                const newTags = prompt('🏷️ العلامات (مفصولة بفاصلة):', (item.tags || []).join(', '));
-                if (newTags !== null) {
-                    item.tags = newTags.split(',').map(t => t.trim()).filter(t => t);
-                }
-                saveData();
-                updateUI();
-                updateStatus(`✏️ تم تعديل ${item.name}`);
-                showToast(`✏️ تم تعديل ${item.name}`, '');
-            }
+            if (newName && newName.trim()) item.name = newName.trim();
+
+            const newCategory = prompt('🏷️ تعديل التصنيف:', item.category || 'غير مصنف');
+            if (newCategory) item.category = newCategory.trim();
+
+            const newUnit = prompt('📏 تعديل وحدة القياس:', item.unit || 'حبة');
+            if (newUnit) item.unit = newUnit.trim();
+
+            const newCost = prompt('💰 تعديل سعر التكلفة:', item.cost || 0);
+            if (newCost && !isNaN(parseFloat(newCost))) item.cost = parseFloat(newCost);
+
+            const newMin = prompt('⚠️ تعديل أقل كمية:', item.min || 5);
+            if (newMin && !isNaN(parseInt(newMin)) && parseInt(newMin) >= 0) item.min = parseInt(newMin);
+
+            const newExpiry = prompt('📅 تاريخ الانتهاء (YYYY-MM-DD) أو اترك فارغاً:', item.expiryDate || '');
+            if (newExpiry && newExpiry.trim()) item.expiryDate = newExpiry.trim();
+            else if (newExpiry === '') delete item.expiryDate;
+
+            const newTags = prompt('🏷️ العلامات (مفصولة بفاصلة):', (item.tags || []).join(', '));
+            if (newTags !== null) item.tags = newTags.split(',').map(t => t.trim()).filter(t => t);
+
+            saveData();
+            updateUI();
+            updateStatus(`✏️ تم تعديل ${item.name}`);
+            showToast(`✏️ تم تعديل ${item.name}`, '');
         }
 
         function deleteProduct(barcode) {
-            if (!hasCustomPermission(currentUser, 'delete')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('delete')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const item = inventory[barcode];
             if (!item) return;
             if (confirm(`🗑️ حذف "${item.name}" نهائياً؟`)) {
@@ -3980,17 +4087,21 @@
         // ============================================================
         //  السجل
         // ============================================================
-        function addLog(type, productName, qty, invoice = {}, user = '', recipient = '') {
+        function addLog(type, productName, qty, invoice = {}, user = '', recipient = '', unit = 'حبة', cost = 0, reason =
+            '') {
             const now = new Date();
             const time = now.toLocaleString('ar-SA');
             const isoTime = now.toISOString();
-            const userDisplay = user || users[currentUser]?.name || currentUser;
+            const userDisplay = user || getCurrentUserName();
             logs.push({
                 type,
                 productName,
                 qty,
                 user: userDisplay,
                 recipient: recipient || '',
+                reason: reason || '',
+                unit: unit || 'حبة',
+                cost: cost || 0,
                 time,
                 isoTime,
                 supplier: invoice.supplier || '',
@@ -4005,7 +4116,7 @@
         }
 
         function clearLogs() {
-            if (!hasCustomPermission(currentUser, 'delete')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('delete')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             if (confirm('🗑️ مسح السجل؟')) {
                 logs = [];
                 saveData();
@@ -4016,9 +4127,9 @@
         }
 
         function exportLogs() {
-            if (!hasCustomPermission(currentUser, 'export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const text = logs.map(l =>
-                `${l.time} - ${l.type} - ${l.productName} × ${l.qty}${l.user?' 👤'+l.user:''}${l.recipient?' 📝'+l.recipient:''}${l.supplier?' 🏢'+l.supplier:''}${l.invoiceNumber?' #'+l.invoiceNumber:''}`
+                `${l.time} - ${l.type} - ${l.productName} × ${l.qty} ${l.unit||''}${l.user?' 👤'+l.user:''}${l.recipient?' 📝'+l.recipient:''}${l.reason?' 📌'+l.reason:''}${l.supplier?' 🏢'+l.supplier:''}${l.invoiceNumber?' #'+l.invoiceNumber:''}`
             ).join('\n');
             downloadFile(text, 'logs.txt', 'text/plain');
             showToast('📤 تم تصدير السجل', '');
@@ -4074,18 +4185,18 @@
         //  التصدير
         // ============================================================
         function exportCSV() {
-            if (!hasCustomPermission(currentUser, 'export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
-            let csv = 'الاسم,الباركود,الكمية,أقل كمية,التصنيف,تاريخ الانتهاء,العلامات\n';
+            if (!hasPermission('export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            let csv = 'الاسم,الباركود,الكمية,الوحدة,سعر التكلفة,أقل كمية,التصنيف,تاريخ الانتهاء,العلامات\n';
             Object.entries(inventory).forEach(([barcode, item]) => {
                 csv +=
-                    `${item.name},${barcode},${item.qty||0},${item.min||5},${item.category||'غير مصنف'},${item.expiryDate||''},"${(item.tags||[]).join(';')}"\n`;
+                    `${item.name},${barcode},${item.qty||0},${item.unit||'حبة'},${item.cost||0},${item.min||5},${item.category||'غير مصنف'},${item.expiryDate||''},"${(item.tags||[]).join(';')}"\n`;
             });
             downloadFile(csv, 'inventory.csv', 'text/csv');
             showToast('📤 تم تصدير CSV', '');
         }
 
         function exportJSON() {
-            if (!hasCustomPermission(currentUser, 'export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
+            if (!hasPermission('export')) { showToast('⚠️ غير مسموح', 'warning'); return; }
             const data = { inventory, logs: logs.slice(-200), productHistory, users, suppliers };
             downloadFile(JSON.stringify(data, null, 2), 'inventory.json', 'application/json');
             showToast('📤 تم تصدير JSON', '');
@@ -4161,7 +4272,7 @@
                 document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
             }
             if (e.key === 'Enter' && document.getElementById('login-screen').classList.contains('active')) {
-                doLogin();
+                handleLogin();
             }
         });
 
