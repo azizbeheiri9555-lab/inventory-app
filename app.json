@@ -8,7 +8,8 @@
     "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "com.inventory.system",
-      "permissions": ["CAMERA", "INTERNET"]
+      "permissions": ["CAMERA", "INTERNET"],
+      "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
